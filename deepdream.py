@@ -180,8 +180,7 @@ class Vgg16(torch.nn.Module):
         return out
 
 
-def preprocess(img_path, target_shape):
-    img = load_image(img_path, target_shape=target_shape)
+def preprocess(img):
     img = (img - IMAGENET_MEAN_1) / IMAGENET_STD_1
     return img
 
@@ -202,11 +201,11 @@ def post_process_image(dump_img, channel_last=False):
     return dump_img
 
 
-def save_and_maybe_display_image(dump_img, should_display=True, channel_last=False):
+def save_and_maybe_display_image(dump_img, should_display=True, channel_last=False, name='test.jpg'):
     assert isinstance(dump_img, np.ndarray), f'Expected numpy array got {type(dump_img)}.'
 
     dump_img = post_process_image(dump_img, channel_last=channel_last)
-    cv.imwrite('test.jpg', dump_img[:, :, ::-1])  # ::-1 because opencv expects BGR (and not RGB) format...
+    cv.imwrite(name, dump_img[:, :, ::-1])  # ::-1 because opencv expects BGR (and not RGB) format...
 
     if should_display:
         plt.imshow(dump_img)
@@ -242,11 +241,11 @@ def simple_deep_dream(img_path):
     save_and_maybe_display_image(img)
 
 
-# no spatial jitter, no octaves, no advanced gradient normalization (std)
-def deep_dream(img_path):
+# no spatial jitter, no advanced gradient normalization (std), no clipping
+def deep_dream(img):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     net = Vgg16(requires_grad=False).to(device)
-    base_img = preprocess(img_path, target_shape=1024)
+    base_img = preprocess(img)
 
     # todo: experiment with these
     pyramid_size = 4
@@ -261,7 +260,10 @@ def deep_dream(img_path):
 
     detail = np.zeros_like(img_pyramid[-1])  # allocate image for network-produced details
 
+    best_img = []
     # going from smaller to bigger resolution
+    # todo: figure out how detail amplitude changes - and see whether clipping helps
+    # todo: see whether jitter helps
     for octave, octave_base in enumerate(reversed(img_pyramid)):
         h, w = octave_base.shape[:2]
         if octave > 0:
@@ -282,10 +284,65 @@ def deep_dream(img_path):
         detail = pytorch_output_adapter(input_tensor) - octave_base
 
         current_img = pytorch_output_adapter(input_tensor)
-        save_and_maybe_display_image(current_img, channel_last=True)
+        best_img = current_img
+        # save_and_maybe_display_image(current_img, channel_last=True)
+    return best_img
+
+
+# rotation:
+# zoom: [1-s,1-s,1] [h*s/2,w*s/2,0]
+# vertical stretch:  [1-s,1,1], [h*s/2,0,0]
+# note: don't use scipy.ndimage it's way slower than OpenCV
+# todo: make a set of interesting transforms in OpenCV
+def understand_affine():
+    h, w, c = [500, 500, 3]
+    s = 0.05
+
+    img = np.zeros((h, w, c))
+    img[100:400, 100:400] = 1.0
+
+    matrix = np.asarray([0.95, 0.95, 1])
+
+    transformed_img = img
+    deg = 3
+    theta = (deg / 180) * np.pi
+    matrix = np.asarray([[np.cos(theta), -np.sin(theta), 0],
+                        [np.sin(theta), np.cos(theta), 0],
+                        [0., 0., 1.]])
+    zoom_matrix = np.asarray([[1-s, 0, 0],
+                        [0, 1-s, 0],
+                        [0., 0., 1.]])
+    ts = time.time()
+    for i in range(10):
+        transformed_img = nd.affine_transform(transformed_img, zoom_matrix, [h*s/2,w*s/2,0], order=1)
+        # transformed_img = cv.warpPerspective(transformed_img, zoom_matrix, (w, h))
+        # plt.imshow(np.hstack([img, transformed_img])); plt.show()
+
+    print(f'{(time.time()-ts)*1000} ms')
+    plt.imshow(np.hstack([img, transformed_img]));
+    plt.show()
+
+
+def deep_dream_video(img_path):
+    frame = load_image(img_path, target_shape=1024)
+
+    s = 0.05  # scale coefficient
+    for i in range(100):
+        frame = deep_dream(frame)
+        h, w = frame.shape[:2]
+        save_and_maybe_display_image(frame, channel_last=True, name=str(i) + '.jpg')
+        # todo: understand how affine transform works here and make it declarative, rotate, zoom, etc. nice API
+        new_frame = nd.affine_transform(frame, np.asarray([1 - s, 1 - s, 1]), [h * s / 2, w * s / 2, 0.0], order=1)
+        plt.figure(figsize=(14, 7))
+        plt.imshow(np.hstack([frame, new_frame]))
+        plt.show()
 
 
 if __name__ == "__main__":
     # play_with_pytorch_gradients()
+
     img_path = 'figures.jpg'
-    deep_dream(img_path)
+    frame = load_image(img_path, target_shape=1024)
+    stylized = deep_dream(frame)
+    # deep_dream_video(img_path)
+    # understand_affine()
