@@ -36,7 +36,7 @@ def create_image_pyramid(img, num_octaves, octave_scale):
     return img_pyramid
 
 
-def random_spatial_shift(img, x, y):
+def random_circular_spatial_shift(img, x, y):
     print('to be implemented')
 
 
@@ -192,7 +192,7 @@ def post_process_image(dump_img, channel_last=False):
         dump_img = np.moveaxis(dump_img, 2, 0)
 
     mean = IMAGENET_MEAN_1.reshape(-1, 1, 1)
-    print(f'mean shape = {mean.shape}')
+    print('mean shape', mean.shape)
     std = IMAGENET_STD_1.reshape(-1, 1, 1)
     dump_img = (dump_img * std) + mean  # de-normalize
     dump_img = (np.clip(dump_img, 0., 1.) * 255).astype(np.uint8)
@@ -222,8 +222,27 @@ def gradient_ascent(backbone_network, img, lr):
     img.data += lr * (g / g_mean)
     img.grad.data.zero_()
 
+    # todo: try 2 policies: 1) clip 2) rescale
+    # tmp_img = img.detach().to('cpu').numpy()[0]
+    # tmp_img = np.clip(tmp_img, (-IMAGENET_MEAN_1/IMAGENET_STD_1).reshape(-1, 1, 1), ((1-IMAGENET_MEAN_1)/IMAGENET_STD_1).reshape(-1, 1, 1))
 
-# no spatial jitter, no octaves, no advanced gradient normalization (std)
+    print(torch.max(img), torch.min(img))
+
+    lower_bound = torch.tensor((-IMAGENET_MEAN_1/IMAGENET_STD_1).reshape(1, -1, 1, 1)).to('cuda')
+    upper_bound = torch.tensor(((1-IMAGENET_MEAN_1)/IMAGENET_STD_1).reshape(1, -1, 1, 1)).to('cuda')
+
+    img = torch.max(torch.min(img, upper_bound), lower_bound)
+    print(torch.max(img), torch.min(img))
+    # https://stackoverflow.com/questions/54738045/column-dependent-bounds-in-torch-clamp
+    # print(clipped.shape)
+    # print(torch.max(img, dim=1).shape)
+
+    # tmp1 = pytorch_output_adapter(clipped)
+    # tmp2 = pytorch_output_adapter(img)
+    # print(np.min(tmp1), np.max(tmp2))
+
+
+# no spatial jitter, no octaves, no clipping policy, no advanced gradient normalization (std)
 def simple_deep_dream(img_path):
     img_path = 'figures.jpg'
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -262,8 +281,9 @@ def deep_dream(img):
 
     best_img = []
     # going from smaller to bigger resolution
-    # todo: figure out how detail amplitude changes - and see whether clipping helps
-    # todo: see whether jitter helps
+    # todo: [1] figure out how detail amplitude changes - and see whether clipping helps
+    # todo: [2] see whether jitter helps
+    # todo: try out advanced gradient scaling
     for octave, octave_base in enumerate(reversed(img_pyramid)):
         h, w = octave_base.shape[:2]
         if octave > 0:
@@ -344,5 +364,7 @@ if __name__ == "__main__":
     img_path = 'figures.jpg'
     frame = load_image(img_path, target_shape=1024)
     stylized = deep_dream(frame)
+    save_and_maybe_display_image(stylized, channel_last=True, name='test.jpg')
+
     # deep_dream_video(img_path)
     # understand_affine()
