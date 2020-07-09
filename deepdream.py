@@ -11,27 +11,28 @@ import cv2 as cv
 from collections import namedtuple
 from torchvision import models
 
-IMAGENET_MEAN_1 = np.array([0.485, 0.456, 0.406])
-IMAGENET_STD_1 = np.array([0.229, 0.224, 0.225])
-IMAGENET_MEAN_255 = np.array([123.675, 116.28, 103.53])
+IMAGENET_MEAN_1 = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+IMAGENET_STD_1 = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+IMAGENET_MEAN_255 = np.array([123.675, 116.28, 103.53], dtype=np.float32)
 # Usually when normalizing 0..255 images only mean-normalization is performed -> that's why standard dev is all 1s here
-IMAGENET_STD_NEUTRAL = np.array([1, 1, 1])
+IMAGENET_STD_NEUTRAL = np.array([1, 1, 1], dtype=np.float32)
 
 # todo: add support for static input image
-# todo: experiment with different models
+# todo: experiment with different models (GoogLeNet, pytorch models trained on MIT Places?)
 # todo: experiment with different single/multiple layers
 # todo: experiment with different objective functions (L2, guide, etc.)
+
+# todo: try out Adam on -L
 
 # todo: add support for video (simple affine transform)
 # todo: add playground function for understanding PyTorch gradients
 
+
 # https://stackoverflow.com/questions/37119071/scipy-rotate-and-zoom-an-image-without-changing-its-dimensions/48097478#48097478
 def create_image_pyramid(img, num_octaves, octave_scale):
     img_pyramid = [img]
-    for i in range(num_octaves-1):
-        # todo: compare the quality between these 2 methods
-        # img_pyramid.append(cv.resize(img_pyramid[-1], (0,0), fx=octave_scale, fy=octave_scale))
-        img_pyramid.append(nd.zoom(img_pyramid[-1], (octave_scale, octave_scale, 1.0), order=1))
+    for i in range(num_octaves-1):  # img_pyramid will have "num_octaves" images
+        img_pyramid.append(cv.resize(img_pyramid[-1], (0, 0), fx=octave_scale, fy=octave_scale))
     return img_pyramid
 
 
@@ -60,15 +61,18 @@ def initial_playground():
     # plt.show()
 
 
+def tensor_summary(t):
+    print(f'data={t.data}')
+    print(f'requires_grad={t.requires_grad}')
+    print(f'grad={t.grad}')
+    print(f'grad_fn={t.grad_fn}')
+    print(f'is_leaf={t.is_leaf}')
+
+
 # todo: explain that diff[:] is equivalent to taking MSE loss
 # todo: dummy deepdream, + jitter + octaves
 def play_with_pytorch_gradients():
-    def tensor_summary(t):
-        print(f'data={t.data}')
-        print(f'requires_grad={t.requires_grad}')
-        print(f'grad={t.grad}')
-        print(f'grad_fn={t.grad_fn}')
-        print(f'is_leaf={t.is_leaf}')
+
 
     x = torch.tensor([[-2.0, 1.0], [1.0, 1.0]], requires_grad=True)
     y = x + 2
@@ -125,6 +129,16 @@ def prepare_img(img_path, target_shape, device, batch_size=1, should_normalize=T
     return img
 
 
+def pytorch_input_adapter(img, device):
+    tensor = transforms.ToTensor()(img).to(device).unsqueeze(0)
+    tensor.requires_grad = True
+    return tensor
+
+
+def pytorch_output_adapter(img):
+    return np.moveaxis(img.to('cpu').detach().numpy()[0], 0, 2)
+
+
 class Vgg16(torch.nn.Module):
     """Only those layers are exposed which have already proven to work nicely."""
     def __init__(self, requires_grad=False, show_progress=False):
@@ -166,21 +180,32 @@ class Vgg16(torch.nn.Module):
         return out
 
 
-def post_process_image(dump_img):
+def preprocess(img_path, target_shape):
+    img = load_image(img_path, target_shape=target_shape)
+    img = (img - IMAGENET_MEAN_1) / IMAGENET_STD_1
+    return img
+
+
+def post_process_image(dump_img, channel_last=False):
     assert isinstance(dump_img, np.ndarray), f'Expected numpy image got {type(dump_img)}'
 
+    if channel_last:
+        dump_img = np.moveaxis(dump_img, 2, 0)
+
     mean = IMAGENET_MEAN_1.reshape(-1, 1, 1)
+    print(f'mean shape = {mean.shape}')
     std = IMAGENET_STD_1.reshape(-1, 1, 1)
     dump_img = (dump_img * std) + mean  # de-normalize
     dump_img = (np.clip(dump_img, 0., 1.) * 255).astype(np.uint8)
     dump_img = np.moveaxis(dump_img, 0, 2)
+
     return dump_img
 
 
-def save_and_maybe_display_image(dump_img, should_display=True):
+def save_and_maybe_display_image(dump_img, should_display=True, channel_last=False):
     assert isinstance(dump_img, np.ndarray), f'Expected numpy array got {type(dump_img)}.'
 
-    dump_img = post_process_image(dump_img)
+    dump_img = post_process_image(dump_img, channel_last=channel_last)
     cv.imwrite('test.jpg', dump_img[:, :, ::-1])  # ::-1 because opencv expects BGR (and not RGB) format...
 
     if should_display:
@@ -207,7 +232,7 @@ def simple_deep_dream(img_path):
     img.requires_grad = True
     backbone_network = Vgg16(requires_grad=False).to(device)
 
-    n_iter = 10
+    n_iter = 2
     lr = 0.2
 
     for iter in range(n_iter):
@@ -219,26 +244,45 @@ def simple_deep_dream(img_path):
 
 # no spatial jitter, no octaves, no advanced gradient normalization (std)
 def deep_dream(img_path):
-    img = load_image(img_path)
-    ts = time.time()
-    img_pyramid = create_image_pyramid(img, 4, 1./1.4)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    net = Vgg16(requires_grad=False).to(device)
+    base_img = preprocess(img_path, target_shape=1024)
+
+    # todo: experiment with these
+    pyramid_size = 4
+    pyramid_ratio = 1./1.7
+    n_iter = 10
+    lr = 0.09
+
+    # contains pyramid_size copies of the very same image with different resolutions
+    img_pyramid = create_image_pyramid(base_img, pyramid_size, pyramid_ratio)
     for img in img_pyramid:
         print(img.shape)
-    print(f'Done after: {(time.time() - ts)*1000:.3f} ms')
 
+    detail = np.zeros_like(img_pyramid[-1])  # allocate image for network-produced details
 
+    # going from smaller to bigger resolution
+    for octave, octave_base in enumerate(reversed(img_pyramid)):
+        h, w = octave_base.shape[:2]
+        if octave > 0:
+            # upscale details from the previous octave
+            h1, w1 = detail.shape[:2]
+            detail = cv.resize(detail, (w, h))
+        input_img = octave_base + detail
+        input_tensor = pytorch_input_adapter(input_img, device)
+        for i in range(n_iter):
+            gradient_ascent(net, input_tensor, lr)
 
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # backbone_network = Vgg16(requires_grad=False).to(device)
-    #
-    # n_iter = 10
-    # lr = 0.2
-    #
-    # for iter in range(n_iter):
-    #     gradient_ascent(backbone_network, img, lr)
-    #
-    # img = img.to('cpu').detach().numpy()[0]
-    # save_and_maybe_display_image(img)
+            # visualization
+            # current_img = pytorch_output_adapter(input_tensor)
+            # print(current_img.shape)
+            # vis = post_process_image(current_img, channel_last=True)
+            # plt.imshow(vis); plt.show()
+
+        detail = pytorch_output_adapter(input_tensor) - octave_base
+
+        current_img = pytorch_output_adapter(input_tensor)
+        save_and_maybe_display_image(current_img, channel_last=True)
 
 
 if __name__ == "__main__":
