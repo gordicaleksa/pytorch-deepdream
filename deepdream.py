@@ -1,10 +1,14 @@
 import os
 import time
+import numbers
+import math
 
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.ndimage as nd
 import torch
+from torch import nn
+from torch.nn import functional as F
 from torchvision import transforms
 import cv2 as cv
 
@@ -212,8 +216,73 @@ def save_and_maybe_display_image(dump_img, should_display=True, channel_last=Fal
         plt.show()
 
 
+class GaussianSmoothing(nn.Module):
+    """
+    Apply gaussian smoothing on a
+    1d, 2d or 3d tensor. Filtering is performed seperately for each channel
+    in the input using a depthwise convolution.
+    Arguments:
+        channels (int, sequence): Number of channels of the input tensors. Output will
+            have this number of channels as well.
+        kernel_size (int, sequence): Size of the gaussian kernel.
+        sigma (float, sequence): Standard deviation of the gaussian kernel.
+        dim (int, optional): The number of dimensions of the data.
+            Default value is 2 (spatial).
+    """
+    def __init__(self, channels, kernel_size, sigma):
+        super().__init__()
+        dim = 2
+
+        if isinstance(kernel_size, numbers.Number):
+            kernel_size = [kernel_size] * dim
+        if isinstance(sigma, numbers.Number):
+            sigma = [sigma] * dim
+
+        # The gaussian kernel is the product of the
+        # gaussian function of each dimension.
+        kernel = 1
+        meshgrids = torch.meshgrid(
+            [
+                torch.arange(size, dtype=torch.float32)
+                for size in kernel_size
+            ]
+        )
+        for size, std, mgrid in zip(kernel_size, sigma, meshgrids):
+            mean = (size - 1) / 2
+            kernel *= 1 / (std * math.sqrt(2 * math.pi)) * \
+                      torch.exp(-((mgrid - mean) / std) ** 2 / 2)
+
+        # Make sure sum of values in gaussian kernel equals 1.
+        kernel = kernel / torch.sum(kernel)
+
+        # Reshape to depthwise convolutional weight
+        kernel = kernel.view(1, 1, *kernel.size())
+        kernel = kernel.repeat(channels, *[1] * (kernel.dim() - 1))
+        kernel = kernel.to('cuda')
+
+        self.register_buffer('weight', kernel)
+        self.groups = channels
+        self.conv = F.conv2d
+
+    def forward(self, input):
+        """
+        Apply gaussian filter to input.
+        Arguments:
+            input (torch.Tensor): Input to apply gaussian filter on.
+        Returns:
+            filtered (torch.Tensor): Filtered output.
+        """
+        return self.conv(input, weight=self.weight, groups=self.groups)
+
+
 lower_bound = torch.tensor((-IMAGENET_MEAN_1/IMAGENET_STD_1).reshape(1, -1, 1, 1)).to('cuda')
 upper_bound = torch.tensor(((1-IMAGENET_MEAN_1)/IMAGENET_STD_1).reshape(1, -1, 1, 1)).to('cuda')
+kernel_size = 5
+sigma = 0.5
+pad = int(kernel_size/2)
+smoothing1 = GaussianSmoothing(3, kernel_size, sigma * 0.5)
+smoothing2 = GaussianSmoothing(3, kernel_size, sigma * 1.0)
+smoothing3 = GaussianSmoothing(3, kernel_size, sigma * 2.0)
 
 
 def gradient_ascent(backbone_network, img, lr):
@@ -224,9 +293,21 @@ def gradient_ascent(backbone_network, img, lr):
     g = img.grad.data
 
     # todo: gaussian filtering on gradient
+    grad = g
+    grad = F.pad(grad, (pad, pad, pad, pad), mode='reflect')
+    grad1 = smoothing1(grad)
+    grad2 = smoothing2(grad)
+    grad3 = smoothing3(grad)
+    print(torch.max(grad1 + grad2 + grad3), torch.max((grad1 + grad2 + grad3)/3))
+    grad = (grad1 + grad2 + grad3) / 3  # mean will compensate for 3
+    # grad = g.cpu(); sigma = 2
+    # grad_1 = nd.gaussian_filter(grad, sigma=sigma * 0.5)
+    # grad_2 = nd.gaussian_filter(grad, sigma=sigma * 1.0)
+    # grad_3 = nd.gaussian_filter(grad, sigma=sigma * 2.0)
+    # grad = torch.tensor(grad_1 + grad_2 + grad_3, device='cuda:0')
 
-    g_mean = torch.mean(torch.abs(g))
-    img.data += lr * (g / g_mean)
+    g_mean = torch.mean(torch.abs(grad))
+    img.data += lr * (grad / g_mean)
     img.data = torch.max(torch.min(img, upper_bound), lower_bound)
     img.grad.data.zero_()
 
@@ -290,7 +371,7 @@ def deep_dream(img):
     # todo: try out advanced gradient scaling
     for octave, octave_base in enumerate(reversed(img_pyramid)):
         h, w = octave_base.shape[:2]
-        if octave > 0:
+        if octave > 0:  # we can avoid this special case
             # upscale details from the previous octave
             h1, w1 = detail.shape[:2]
             detail = cv.resize(detail, (w, h))
@@ -363,7 +444,7 @@ if __name__ == "__main__":
     # play_with_pytorch_gradients()
 
     img_path = 'figures.jpg'
-    # frame = load_image(img_path, target_shape=1024)
+    frame = load_image(img_path, target_shape=600)
     # stylized = deep_dream(frame)
     # save_and_maybe_display_image(stylized, channel_last=True, name='test.jpg')
     deep_dream_video(img_path)
