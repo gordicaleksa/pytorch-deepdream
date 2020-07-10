@@ -212,27 +212,32 @@ def save_and_maybe_display_image(dump_img, should_display=True, channel_last=Fal
         plt.show()
 
 
+lower_bound = torch.tensor((-IMAGENET_MEAN_1/IMAGENET_STD_1).reshape(1, -1, 1, 1)).to('cuda')
+upper_bound = torch.tensor(((1-IMAGENET_MEAN_1)/IMAGENET_STD_1).reshape(1, -1, 1, 1)).to('cuda')
+
+
 def gradient_ascent(backbone_network, img, lr):
     out = backbone_network(img)
-    layer = out.relu3_3
+    layer = out.relu4_3
     layer.backward(layer)
 
     g = img.grad.data
+
+    # todo: gaussian filtering on gradient
+
     g_mean = torch.mean(torch.abs(g))
     img.data += lr * (g / g_mean)
+    img.data = torch.max(torch.min(img, upper_bound), lower_bound)
     img.grad.data.zero_()
 
     # todo: try 2 policies: 1) clip 2) rescale
     # tmp_img = img.detach().to('cpu').numpy()[0]
     # tmp_img = np.clip(tmp_img, (-IMAGENET_MEAN_1/IMAGENET_STD_1).reshape(-1, 1, 1), ((1-IMAGENET_MEAN_1)/IMAGENET_STD_1).reshape(-1, 1, 1))
 
-    print(torch.max(img), torch.min(img))
+    # with torch.no_grad():
+    #     print(torch.max(img), torch.min(img))
 
-    lower_bound = torch.tensor((-IMAGENET_MEAN_1/IMAGENET_STD_1).reshape(1, -1, 1, 1)).to('cuda')
-    upper_bound = torch.tensor(((1-IMAGENET_MEAN_1)/IMAGENET_STD_1).reshape(1, -1, 1, 1)).to('cuda')
-
-    img = torch.max(torch.min(img, upper_bound), lower_bound)
-    print(torch.max(img), torch.min(img))
+    # img = torch.max(torch.min(img, upper_bound), lower_bound)
     # https://stackoverflow.com/questions/54738045/column-dependent-bounds-in-torch-clamp
     # print(clipped.shape)
     # print(torch.max(img, dim=1).shape)
@@ -268,7 +273,7 @@ def deep_dream(img):
 
     # todo: experiment with these
     pyramid_size = 4
-    pyramid_ratio = 1./1.7
+    pyramid_ratio = 1./1.4
     n_iter = 10
     lr = 0.09
 
@@ -281,8 +286,7 @@ def deep_dream(img):
 
     best_img = []
     # going from smaller to bigger resolution
-    # todo: [1] figure out how detail amplitude changes - and see whether clipping helps
-    # todo: [2] see whether jitter helps
+    # todo: [1] see whether jitter helps
     # todo: try out advanced gradient scaling
     for octave, octave_base in enumerate(reversed(img_pyramid)):
         h, w = octave_base.shape[:2]
@@ -313,7 +317,7 @@ def deep_dream(img):
 # zoom: [1-s,1-s,1] [h*s/2,w*s/2,0]
 # vertical stretch:  [1-s,1,1], [h*s/2,0,0]
 # note: don't use scipy.ndimage it's way slower than OpenCV
-# todo: make a set of interesting transforms in OpenCV
+# todo: make a set of interesting transforms in OpenCV (e.g. spiral-zoom motion)
 def understand_affine():
     h, w, c = [500, 500, 3]
     s = 0.05
@@ -344,27 +348,25 @@ def understand_affine():
 
 
 def deep_dream_video(img_path):
-    frame = load_image(img_path, target_shape=1024)
+    frame = load_image(img_path, target_shape=600)
 
     s = 0.05  # scale coefficient
     for i in range(100):
         frame = deep_dream(frame)
         h, w = frame.shape[:2]
-        save_and_maybe_display_image(frame, channel_last=True, name=str(i) + '.jpg')
+        save_and_maybe_display_image(frame, channel_last=True, should_display=False, name=os.path.join('video', str(i) + '.jpg'))
         # todo: understand how affine transform works here and make it declarative, rotate, zoom, etc. nice API
-        new_frame = nd.affine_transform(frame, np.asarray([1 - s, 1 - s, 1]), [h * s / 2, w * s / 2, 0.0], order=1)
-        plt.figure(figsize=(14, 7))
-        plt.imshow(np.hstack([frame, new_frame]))
-        plt.show()
+        frame = nd.affine_transform(frame, np.asarray([1 - s, 1 - s, 1]), [h * s / 2, w * s / 2, 0.0], order=1)
 
 
 if __name__ == "__main__":
     # play_with_pytorch_gradients()
 
     img_path = 'figures.jpg'
-    frame = load_image(img_path, target_shape=1024)
-    stylized = deep_dream(frame)
-    save_and_maybe_display_image(stylized, channel_last=True, name='test.jpg')
+    # frame = load_image(img_path, target_shape=1024)
+    # stylized = deep_dream(frame)
+    # save_and_maybe_display_image(stylized, channel_last=True, name='test.jpg')
+    deep_dream_video(img_path)
 
     # deep_dream_video(img_path)
     # understand_affine()
