@@ -30,7 +30,6 @@ IMAGENET_STD_NEUTRAL = np.array([1, 1, 1], dtype=np.float32)
 
 # todo: try out Adam on -L
 
-# todo: add support for video (simple affine transform)
 # todo: add playground function for understanding PyTorch gradients
 
 
@@ -290,12 +289,18 @@ pad = int(kernel_size/2)
 def gradient_ascent(backbone_network, img, lr, cnt):
     out = backbone_network(img)
     layer = out.relu4_3
-    # loss = torch.nn.MSELoss(reduction='sum')(layer, )
-    layer.backward(layer)  # todo: try out simple L2 and not L2^2 i.e. MSE
+    loss = torch.norm(torch.flatten(layer), p=1)
+    loss.backward()
+    # todo: [1] Adam
+    # todo: [2] other models if I still don't get reasonable video stream
+
+    # loss = torch.nn.MSELoss(reduction='sum')(layer, torch.zeros_like(layer)) / 2
+    # layer.backward(layer)
 
     g = img.grad.data
 
     grad = g
+
     grad = F.pad(grad, (pad, pad, pad, pad), mode='reflect')
     sigma = ((cnt + 1) / 10) * 2.0 + .5
     # todo: pack this into a single class
@@ -368,8 +373,6 @@ def deep_dream(img):
 
     best_img = []
     # going from smaller to bigger resolution
-    # todo: [1] see whether jitter helps
-    # todo: try out advanced gradient scaling
     for octave, octave_base in enumerate(reversed(img_pyramid)):
         h, w = octave_base.shape[:2]
         if octave > 0:  # we can avoid this special case
@@ -437,11 +440,11 @@ def deep_dream_video(img_path):
 
     s = 0.05  # scale coefficient
     for i in range(100):
-        print(f'Iteration {i+1}')
+        print(f'Dream iteration {i+1}')
         frame = deep_dream(frame)
         h, w = frame.shape[:2]
         save_and_maybe_display_image(frame, channel_last=True, should_display=False, name=os.path.join('video', str(i) + '.jpg'))
-        # todo: understand how affine transform works here and make it declarative, rotate, zoom, etc. nice API
+        # todo: make it more declarative and not imperative, rotate, zoom, etc. nice API
         frame = nd.affine_transform(frame, np.asarray([1 - s, 1 - s, 1]), [h * s / 2, w * s / 2, 0.0], order=1)
 
 
