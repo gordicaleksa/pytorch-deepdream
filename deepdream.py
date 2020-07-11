@@ -11,10 +11,12 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torchvision import transforms
+from torch.optim import Adam
 import cv2 as cv
 
-from collections import namedtuple
-from torchvision import models
+from models.vggs import Vgg16
+from models.googlenet import GoogLeNet
+
 
 IMAGENET_MEAN_1 = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 IMAGENET_STD_1 = np.array([0.229, 0.224, 0.225], dtype=np.float32)
@@ -22,14 +24,12 @@ IMAGENET_MEAN_255 = np.array([123.675, 116.28, 103.53], dtype=np.float32)
 # Usually when normalizing 0..255 images only mean-normalization is performed -> that's why standard dev is all 1s here
 IMAGENET_STD_NEUTRAL = np.array([1, 1, 1], dtype=np.float32)
 
-# todo: add support for static input image
 # todo: experiment with different models (GoogLeNet, pytorch models trained on MIT Places?)
 # todo: experiment with different single/multiple layers
 # todo: experiment with different objective functions (L2, guide, etc.)
-# todo: add random init image support
-
 # todo: try out Adam on -L
 
+# todo: add random init image support
 # todo: add playground function for understanding PyTorch gradients
 
 
@@ -149,47 +149,6 @@ def pytorch_output_adapter(img):
     return np.moveaxis(img.to('cpu').detach().numpy()[0], 0, 2)
 
 
-class Vgg16(torch.nn.Module):
-    """Only those layers are exposed which have already proven to work nicely."""
-    def __init__(self, requires_grad=False, show_progress=False):
-        super().__init__()
-        # Keeping eval() mode only for consistency - it only affects BatchNorm and Dropout both of which we won't use
-        vgg16 = models.vgg16(pretrained=True, progress=show_progress).eval()
-        vgg_pretrained_features = vgg16.features
-        self.layer_names = ['relu1_2', 'relu2_2', 'relu3_3', 'relu4_3']
-
-        self.slice1 = torch.nn.Sequential()
-        self.slice2 = torch.nn.Sequential()
-        self.slice3 = torch.nn.Sequential()
-        self.slice4 = torch.nn.Sequential()
-        for x in range(4):
-            self.slice1.add_module(str(x), vgg_pretrained_features[x])
-        for x in range(4, 9):
-            self.slice2.add_module(str(x), vgg_pretrained_features[x])
-        for x in range(9, 16):
-            self.slice3.add_module(str(x), vgg_pretrained_features[x])
-        for x in range(16, 23):
-            self.slice4.add_module(str(x), vgg_pretrained_features[x])
-
-        # Set these to False so that PyTorch won't be including them in it's autograd engine - eating up precious memory
-        if not requires_grad:
-            for param in self.parameters():
-                param.requires_grad = False
-
-    def forward(self, x):
-        x = self.slice1(x)
-        relu1_2 = x
-        x = self.slice2(x)
-        relu2_2 = x
-        x = self.slice3(x)
-        relu3_3 = x
-        x = self.slice4(x)
-        relu4_3 = x
-        vgg_outputs = namedtuple("VggOutputs", self.layer_names)
-        out = vgg_outputs(relu1_2, relu2_2, relu3_3, relu4_3)
-        return out
-
-
 def preprocess(img):
     img = (img - IMAGENET_MEAN_1) / IMAGENET_STD_1
     return img
@@ -231,17 +190,16 @@ class GaussianSmoothing(nn.Module):
             have this number of channels as well.
         kernel_size (int, sequence): Size of the gaussian kernel.
         sigma (float, sequence): Standard deviation of the gaussian kernel.
-        dim (int, optional): The number of dimensions of the data.
-            Default value is 2 (spatial).
     """
     def __init__(self, channels, kernel_size, sigma):
         super().__init__()
         dim = 2
 
+        self.pad = int(kernel_size / 2)
         if isinstance(kernel_size, numbers.Number):
             kernel_size = [kernel_size] * dim
-        if isinstance(sigma, numbers.Number):
-            sigma = [sigma] * dim
+
+        sigmas = [0.5 * sigma, 1.0 * sigma, 2.0 * sigma]
 
         # The gaussian kernel is the product of the
         # gaussian function of each dimension.
@@ -252,20 +210,29 @@ class GaussianSmoothing(nn.Module):
                 for size in kernel_size
             ]
         )
-        for size, std, mgrid in zip(kernel_size, sigma, meshgrids):
-            mean = (size - 1) / 2
-            kernel *= 1 / (std * math.sqrt(2 * math.pi)) * \
-                      torch.exp(-((mgrid - mean) / std) ** 2 / 2)
+        kernels = []
+        for s in sigmas:
+            sigma = [s, s]
+            for size, std, mgrid in zip(kernel_size, sigma, meshgrids):
+                mean = (size - 1) / 2
+                kernel *= 1 / (std * math.sqrt(2 * math.pi)) * \
+                          torch.exp(-((mgrid - mean) / std) ** 2 / 2)
+                kernels.append(kernel)
 
-        # Make sure sum of values in gaussian kernel equals 1.
-        kernel = kernel / torch.sum(kernel)
+        prepared_kernels = []
+        for kernel in kernels:
+            # Make sure sum of values in gaussian kernel equals 1.
+            kernel = kernel / torch.sum(kernel)
 
-        # Reshape to depthwise convolutional weight
-        kernel = kernel.view(1, 1, *kernel.size())
-        kernel = kernel.repeat(channels, *[1] * (kernel.dim() - 1))
-        kernel = kernel.to('cuda')
+            # Reshape to depthwise convolutional weight
+            kernel = kernel.view(1, 1, *kernel.size())
+            kernel = kernel.repeat(channels, *[1] * (kernel.dim() - 1))
+            kernel = kernel.to('cuda')
+            prepared_kernels.append(kernel)
 
-        self.register_buffer('weight', kernel)
+        self.register_buffer('weight1', prepared_kernels[0])
+        self.register_buffer('weight2', prepared_kernels[1])
+        self.register_buffer('weight3', prepared_kernels[2])
         self.groups = channels
         self.conv = F.conv2d
 
@@ -277,62 +244,54 @@ class GaussianSmoothing(nn.Module):
         Returns:
             filtered (torch.Tensor): Filtered output.
         """
-        return self.conv(input, weight=self.weight, groups=self.groups)
+        input = F.pad(input, (self.pad, self.pad, self.pad, self.pad), mode='reflect')
+        grad1 = self.conv(input, weight=self.weight1, groups=self.groups)
+        grad2 = self.conv(input, weight=self.weight2, groups=self.groups)
+        grad3 = self.conv(input, weight=self.weight3, groups=self.groups)
+        return grad1 + grad2 + grad3
 
 
 lower_bound = torch.tensor((-IMAGENET_MEAN_1/IMAGENET_STD_1).reshape(1, -1, 1, 1)).to('cuda')
 upper_bound = torch.tensor(((1-IMAGENET_MEAN_1)/IMAGENET_STD_1).reshape(1, -1, 1, 1)).to('cuda')
-kernel_size = 9
-pad = int(kernel_size/2)
+KERNEL_SIZE = 9
 
 
 def gradient_ascent(backbone_network, img, lr, cnt):
     out = backbone_network(img)
-    layer = out.relu4_3
-    loss = torch.norm(torch.flatten(layer), p=1)
-    loss.backward()
-    # todo: [1] Adam
-    # todo: [2] other models if I still don't get reasonable video stream
-
-    # loss = torch.nn.MSELoss(reduction='sum')(layer, torch.zeros_like(layer)) / 2
+    layer = out.inception4c
+    # loss = torch.norm(torch.flatten(layer), p=2)
+    loss = torch.nn.MSELoss(reduction='sum')(layer, torch.zeros_like(layer)) / 2
     # layer.backward(layer)
 
-    g = img.grad.data
+    loss.backward()
+    # todo: [1] other models trained on non-ImageNet datasets
+    #  if I still don't get reasonable video stream
 
-    grad = g
+    grad = img.grad.data
 
-    grad = F.pad(grad, (pad, pad, pad, pad), mode='reflect')
     sigma = ((cnt + 1) / 10) * 2.0 + .5
-    # todo: pack this into a single class
-    smoothing1 = GaussianSmoothing(3, kernel_size, sigma * 0.5)
-    smoothing2 = GaussianSmoothing(3, kernel_size, sigma * 1.0)
-    smoothing3 = GaussianSmoothing(3, kernel_size, sigma * 2.0)
+    smooth_grad = GaussianSmoothing(3, KERNEL_SIZE, sigma)(grad)
 
-    grad1 = smoothing1(grad)
-    grad2 = smoothing2(grad)
-    grad3 = smoothing3(grad)
-    grad = (grad1 + grad2 + grad3)
-
-    g_mean = torch.mean(torch.abs(grad))
-    img.data += lr * (grad / g_mean)
-    img.data = torch.max(torch.min(img, upper_bound), lower_bound)
+    # todo: consider using std for grad normalization and not mean
+    g_mean = torch.mean(torch.abs(smooth_grad))
+    img.data += lr * (smooth_grad / g_mean)
     img.grad.data.zero_()
 
-    # todo: try 2 policies: 1) clip 2) rescale
-    # tmp_img = img.detach().to('cpu').numpy()[0]
-    # tmp_img = np.clip(tmp_img, (-IMAGENET_MEAN_1/IMAGENET_STD_1).reshape(-1, 1, 1), ((1-IMAGENET_MEAN_1)/IMAGENET_STD_1).reshape(-1, 1, 1))
+    img.data = torch.max(torch.min(img, upper_bound), lower_bound) # https://stackoverflow.com/questions/54738045/column-dependent-bounds-in-torch-clamp
 
-    # with torch.no_grad():
-    #     print(torch.max(img), torch.min(img))
 
-    # img = torch.max(torch.min(img, upper_bound), lower_bound)
-    # https://stackoverflow.com/questions/54738045/column-dependent-bounds-in-torch-clamp
-    # print(clipped.shape)
-    # print(torch.max(img, dim=1).shape)
+def gradient_ascent_adam(backbone_network, img):
+    optimizer = Adam((img,), lr=0.09)
 
-    # tmp1 = pytorch_output_adapter(clipped)
-    # tmp2 = pytorch_output_adapter(img)
-    # print(np.min(tmp1), np.max(tmp2))
+    out = backbone_network(img)
+    layer = out.inception4c
+    loss = -torch.nn.MSELoss(reduction='sum')(layer, torch.zeros_like(layer)) / 2
+    loss.backward()
+
+    optimizer.step()
+    optimizer.zero_grad()
+
+    img.data = torch.max(torch.min(img, upper_bound), lower_bound)  # https://stackoverflow.com/questions/54738045/column-dependent-bounds-in-torch-clamp
 
 
 # no spatial jitter, no octaves, no clipping policy, no advanced gradient normalization (std)
@@ -356,7 +315,7 @@ def simple_deep_dream(img_path):
 # no spatial jitter, no advanced gradient normalization (std), no clipping
 def deep_dream(img):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    net = Vgg16(requires_grad=False).to(device)
+    net = GoogLeNet(requires_grad=False, show_progress=True).to(device)
     base_img = preprocess(img)
 
     # todo: experiment with these
@@ -386,6 +345,7 @@ def deep_dream(img):
             input_tensor = random_circular_spatial_shift(input_tensor, h_shift, w_shift)
             # print(tmp.requires_grad, input_tensor.requires_grad)
             gradient_ascent(net, input_tensor, lr, i)
+            # gradient_ascent_adam(net, input_tensor)
             input_tensor = random_circular_spatial_shift(input_tensor, h_shift, w_shift, should_undo=True)
             # visualization
             # current_img = pytorch_output_adapter(input_tensor)
@@ -393,6 +353,7 @@ def deep_dream(img):
             # vis = post_process_image(current_img, channel_last=True)
             # plt.imshow(vis); plt.show()
 
+        # todo: consider just rescaling without doing subtraction
         detail = pytorch_output_adapter(input_tensor) - octave_base
 
         current_img = pytorch_output_adapter(input_tensor)
