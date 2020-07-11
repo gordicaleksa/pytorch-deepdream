@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch import nn
+import scipy.ndimage as nd
 
 
 IMAGENET_MEAN_1 = np.array([0.485, 0.456, 0.406], dtype=np.float32)
@@ -20,6 +21,13 @@ LOWER_IMAGE_BOUND = torch.tensor((-IMAGENET_MEAN_1 / IMAGENET_STD_1).reshape(1, 
 UPPER_IMAGE_BOUND = torch.tensor(((1 - IMAGENET_MEAN_1) / IMAGENET_STD_1).reshape(1, -1, 1, 1)).to('cuda')
 KERNEL_SIZE = 9
 
+
+SUPPORTED_TRANSFORMS = ['central_zoom', 'rotate', 'spiral']
+
+
+#
+# Image manipulation util functions
+#
 
 def load_image(img_path, target_shape=None):
     if not os.path.exists(img_path):
@@ -41,45 +49,25 @@ def load_image(img_path, target_shape=None):
     return img
 
 
-def prepare_img(img_path, target_shape, device, batch_size=1):
-    img = load_image(img_path, target_shape=target_shape)
+def preprocess_numpy_img(img):
+    assert isinstance(img, np.ndarray), f'Expected numpy image got {type(img)}'
 
-    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=IMAGENET_MEAN_1, std=IMAGENET_STD_1)])
-    img = transform(img).to(device)
-    img = img.repeat(batch_size, 1, 1, 1)
-
+    img = (img - IMAGENET_MEAN_1) / IMAGENET_STD_1  # normalize image
     return img
 
 
-def preprocess_img(img):
-    img = (img - IMAGENET_MEAN_1) / IMAGENET_STD_1
-    return img
-
-
-def post_process_image(dump_img, channel_last=False):
+def post_process_numpy_image(dump_img):
     assert isinstance(dump_img, np.ndarray), f'Expected numpy image got {type(dump_img)}'
 
-    if channel_last:
-        dump_img = np.moveaxis(dump_img, 2, 0)
+    if dump_img.shape[0] == 3:  # if channel-first format move to channel-last (CHW -> HWC)
+        dump_img = np.moveaxis(dump_img, 0, 2)
 
-    mean = IMAGENET_MEAN_1.reshape(-1, 1, 1)
-    std = IMAGENET_STD_1.reshape(-1, 1, 1)
+    mean = IMAGENET_MEAN_1.reshape(1, 1, -1)
+    std = IMAGENET_STD_1.reshape(1, 1, -1)
     dump_img = (dump_img * std) + mean  # de-normalize
     dump_img = (np.clip(dump_img, 0., 1.) * 255).astype(np.uint8)
-    dump_img = np.moveaxis(dump_img, 0, 2)
 
     return dump_img
-
-
-def save_and_maybe_display_image(dump_img, should_display=True, channel_last=False, name='test.jpg'):
-    assert isinstance(dump_img, np.ndarray), f'Expected numpy array got {type(dump_img)}.'
-
-    dump_img = post_process_image(dump_img, channel_last=channel_last)
-    cv.imwrite(name, dump_img[:, :, ::-1])  # ::-1 because opencv expects BGR (and not RGB) format...
-
-    if should_display:
-        plt.imshow(dump_img)
-        plt.show()
 
 
 def pytorch_input_adapter(img, device):
@@ -90,6 +78,40 @@ def pytorch_input_adapter(img, device):
 
 def pytorch_output_adapter(img):
     return np.moveaxis(img.to('cpu').detach().numpy()[0], 0, 2)
+
+
+def save_and_maybe_display_image(config, dump_img, should_display=True, name_modifier=None):
+    assert isinstance(dump_img, np.ndarray), f'Expected numpy array got {type(dump_img)}.'
+
+    dump_img = post_process_numpy_image(dump_img)
+    name_infix = '' if name_modifier is None else f'_{str(name_modifier).zfill(4)}_'
+    dump_img_name = config['input_img_name'].split('.')[0] + '_width_' + str(config['img_width']) + '_model_' + config['model'].split('.')[0] + name_infix + '.jpg'
+    dump_img_dir = config['out_videos_path'] if config['is_video'] else config['out_images_path']
+    cv.imwrite(os.path.join(dump_img_dir, dump_img_name), dump_img[:, :, ::-1])  # ::-1 because opencv expects BGR (and not RGB) format...
+
+    if should_display:
+        plt.imshow(dump_img)
+        plt.show()
+
+#
+# End of image manipulation util functions
+#
+
+
+# todo: Add support for rotation and spiral transform
+def transform_frame(config, frame):
+    if config['frame_transform'] == SUPPORTED_TRANSFORMS[0]:
+        s = 0.05
+        h, w = frame.shape[:2]
+        frame = nd.affine_transform(frame, np.asarray([1 - s, 1 - s, 1]), [h * s / 2, w * s / 2, 0.0], order=1)
+    elif config['frame_transform'] == SUPPORTED_TRANSFORMS[1]:
+        raise Exception('Not yet supported.')
+    elif config['frame_transform'] == SUPPORTED_TRANSFORMS[2]:
+        raise Exception('Not yet supported.')
+    else:
+        raise Exception('Not yet supported.')
+
+    return frame
 
 
 # https://stackoverflow.com/questions/37119071/scipy-rotate-and-zoom-an-image-without-changing-its-dimensions/48097478#48097478
