@@ -2,6 +2,7 @@ import os
 import time
 import numbers
 import math
+import random
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,6 +26,7 @@ IMAGENET_STD_NEUTRAL = np.array([1, 1, 1], dtype=np.float32)
 # todo: experiment with different models (GoogLeNet, pytorch models trained on MIT Places?)
 # todo: experiment with different single/multiple layers
 # todo: experiment with different objective functions (L2, guide, etc.)
+# todo: add random init image support
 
 # todo: try out Adam on -L
 
@@ -40,8 +42,14 @@ def create_image_pyramid(img, num_octaves, octave_scale):
     return img_pyramid
 
 
-def random_circular_spatial_shift(img, x, y):
-    print('to be implemented')
+def random_circular_spatial_shift(tensor, h_shift, w_shift, should_undo=False):
+    if should_undo:
+        h_shift = -h_shift
+        w_shift = -w_shift
+    with torch.no_grad():
+        rolled = torch.roll(tensor, shifts=(h_shift, w_shift), dims=(2, 3))
+        rolled.requires_grad = True
+        return rolled
 
 
 def initial_playground():
@@ -74,7 +82,6 @@ def tensor_summary(t):
 
 
 # todo: explain that diff[:] is equivalent to taking MSE loss
-# todo: dummy deepdream, + jitter + octaves
 def play_with_pytorch_gradients():
 
 
@@ -196,7 +203,6 @@ def post_process_image(dump_img, channel_last=False):
         dump_img = np.moveaxis(dump_img, 2, 0)
 
     mean = IMAGENET_MEAN_1.reshape(-1, 1, 1)
-    print('mean shape', mean.shape)
     std = IMAGENET_STD_1.reshape(-1, 1, 1)
     dump_img = (dump_img * std) + mean  # de-normalize
     dump_img = (np.clip(dump_img, 0., 1.) * 255).astype(np.uint8)
@@ -277,34 +283,30 @@ class GaussianSmoothing(nn.Module):
 
 lower_bound = torch.tensor((-IMAGENET_MEAN_1/IMAGENET_STD_1).reshape(1, -1, 1, 1)).to('cuda')
 upper_bound = torch.tensor(((1-IMAGENET_MEAN_1)/IMAGENET_STD_1).reshape(1, -1, 1, 1)).to('cuda')
-kernel_size = 5
-sigma = 0.5
+kernel_size = 9
 pad = int(kernel_size/2)
-smoothing1 = GaussianSmoothing(3, kernel_size, sigma * 0.5)
-smoothing2 = GaussianSmoothing(3, kernel_size, sigma * 1.0)
-smoothing3 = GaussianSmoothing(3, kernel_size, sigma * 2.0)
 
 
-def gradient_ascent(backbone_network, img, lr):
+def gradient_ascent(backbone_network, img, lr, cnt):
     out = backbone_network(img)
     layer = out.relu4_3
-    layer.backward(layer)
+    # loss = torch.nn.MSELoss(reduction='sum')(layer, )
+    layer.backward(layer)  # todo: try out simple L2 and not L2^2 i.e. MSE
 
     g = img.grad.data
 
-    # todo: gaussian filtering on gradient
     grad = g
     grad = F.pad(grad, (pad, pad, pad, pad), mode='reflect')
+    sigma = ((cnt + 1) / 10) * 2.0 + .5
+    # todo: pack this into a single class
+    smoothing1 = GaussianSmoothing(3, kernel_size, sigma * 0.5)
+    smoothing2 = GaussianSmoothing(3, kernel_size, sigma * 1.0)
+    smoothing3 = GaussianSmoothing(3, kernel_size, sigma * 2.0)
+
     grad1 = smoothing1(grad)
     grad2 = smoothing2(grad)
     grad3 = smoothing3(grad)
-    print(torch.max(grad1 + grad2 + grad3), torch.max((grad1 + grad2 + grad3)/3))
-    grad = (grad1 + grad2 + grad3) / 3  # mean will compensate for 3
-    # grad = g.cpu(); sigma = 2
-    # grad_1 = nd.gaussian_filter(grad, sigma=sigma * 0.5)
-    # grad_2 = nd.gaussian_filter(grad, sigma=sigma * 1.0)
-    # grad_3 = nd.gaussian_filter(grad, sigma=sigma * 2.0)
-    # grad = torch.tensor(grad_1 + grad_2 + grad_3, device='cuda:0')
+    grad = (grad1 + grad2 + grad3)
 
     g_mean = torch.mean(torch.abs(grad))
     img.data += lr * (grad / g_mean)
@@ -357,11 +359,10 @@ def deep_dream(img):
     pyramid_ratio = 1./1.4
     n_iter = 10
     lr = 0.09
+    jitter = 100
 
     # contains pyramid_size copies of the very same image with different resolutions
     img_pyramid = create_image_pyramid(base_img, pyramid_size, pyramid_ratio)
-    for img in img_pyramid:
-        print(img.shape)
 
     detail = np.zeros_like(img_pyramid[-1])  # allocate image for network-produced details
 
@@ -378,8 +379,11 @@ def deep_dream(img):
         input_img = octave_base + detail
         input_tensor = pytorch_input_adapter(input_img, device)
         for i in range(n_iter):
-            gradient_ascent(net, input_tensor, lr)
-
+            h_shift, w_shift = np.random.randint(-jitter, jitter + 1, 2)
+            input_tensor = random_circular_spatial_shift(input_tensor, h_shift, w_shift)
+            # print(tmp.requires_grad, input_tensor.requires_grad)
+            gradient_ascent(net, input_tensor, lr, i)
+            input_tensor = random_circular_spatial_shift(input_tensor, h_shift, w_shift, should_undo=True)
             # visualization
             # current_img = pytorch_output_adapter(input_tensor)
             # print(current_img.shape)
@@ -433,6 +437,7 @@ def deep_dream_video(img_path):
 
     s = 0.05  # scale coefficient
     for i in range(100):
+        print(f'Iteration {i+1}')
         frame = deep_dream(frame)
         h, w = frame.shape[:2]
         save_and_maybe_display_image(frame, channel_last=True, should_display=False, name=os.path.join('video', str(i) + '.jpg'))
