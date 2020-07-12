@@ -15,6 +15,7 @@ import scipy.ndimage as nd
 
 from models.vggs import Vgg16
 from models.googlenet import GoogLeNet
+from models.resnets import ResNet50
 
 
 IMAGENET_MEAN_1 = np.array([0.485, 0.456, 0.406], dtype=np.float32)
@@ -27,7 +28,7 @@ KERNEL_SIZE = 9
 
 
 SUPPORTED_TRANSFORMS = ['central_zoom', 'rotate', 'spiral']
-SUPPORTED_MODELS = ['vgg16', 'googlenet']
+SUPPORTED_MODELS = ['vgg16', 'googlenet', 'resnet50']
 
 
 #
@@ -91,6 +92,8 @@ def save_and_maybe_display_image(config, dump_img, should_display=True, name_mod
     dump_img = post_process_numpy_image(dump_img)
     name_infix = '' if name_modifier is None else f'_{str(name_modifier).zfill(4)}_'
     dump_img_name = config['input_img_name'].split('.')[0] + '_width_' + str(config['img_width']) + '_model_' + config['model'].split('.')[0] + name_infix + '.jpg'
+    if config['is_video']:  # todo: tmp hack because of ffmpeg
+        dump_img_name = str(name_modifier).zfill(4) + '.jpg'
     dump_img_dir = config['out_videos_path'] if config['is_video'] else config['out_images_path']
     cv.imwrite(os.path.join(dump_img_dir, dump_img_name), dump_img[:, :, ::-1])  # ::-1 because opencv expects BGR (and not RGB) format...
 
@@ -108,6 +111,8 @@ def fetch_and_prepare_model(model_type, device):
         model = Vgg16(requires_grad=False, show_progress=True).to(device)
     elif model_type == SUPPORTED_MODELS[1]:
         model = GoogLeNet(requires_grad=False, show_progress=True).to(device)
+    elif model_type == SUPPORTED_MODELS[2]:
+        model = ResNet50(requires_grad=False, show_progress=True).to(device)
     else:
         raise Exception('Not yet supported.')
     return model
@@ -116,7 +121,7 @@ def fetch_and_prepare_model(model_type, device):
 # todo: Add support for rotation and spiral transform
 def transform_frame(config, frame):
     if config['frame_transform'] == SUPPORTED_TRANSFORMS[0]:
-        s = 0.05
+        s = 0.001  # todo: tmp hack
         h, w = frame.shape[:2]
         frame = nd.affine_transform(frame, np.asarray([1 - s, 1 - s, 1]), [h * s / 2, w * s / 2, 0.0], order=1)
     elif config['frame_transform'] == SUPPORTED_TRANSFORMS[1]:

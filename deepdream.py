@@ -11,6 +11,7 @@ import cv2 as cv
 from models.vggs import Vgg16
 import utils.utils as utils
 from utils.utils import LOWER_IMAGE_BOUND, UPPER_IMAGE_BOUND, GaussianSmoothing, KERNEL_SIZE, SUPPORTED_TRANSFORMS, SUPPORTED_MODELS
+from utils.video_utils import create_video_from_intermediate_results
 
 
 # todo: experiment with different models (GoogLeNet, pytorch models trained on MIT Places?)
@@ -125,6 +126,9 @@ def deep_dream_video(config):
         utils.save_and_maybe_display_image(config, frame, should_display=config['should_display'], name_modifier=frame_id)
         frame = utils.transform_frame(config, frame)  # transform frame e.g. central zoom, spiral, etc.
 
+    # todo: add video creation function from frames
+    create_video_from_intermediate_results(config)
+
 
 if __name__ == "__main__":
     #
@@ -144,7 +148,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
     parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
     parser.add_argument("--model", type=str, choices=SUPPORTED_MODELS, help="Neural network (model) to use for dreaming", default=SUPPORTED_MODELS[0])
-    parser.add_argument("--layer_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu2_2', 'relu4_3'])
+    parser.add_argument("--layer_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu4_3'])
     parser.add_argument("--frame_transform", type=str, choices=SUPPORTED_TRANSFORMS,
                         help="Transform used to transform the output frame and feed it back to the network input", default=SUPPORTED_TRANSFORMS[0])
 
