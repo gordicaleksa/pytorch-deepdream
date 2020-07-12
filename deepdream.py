@@ -9,24 +9,25 @@ import cv2 as cv
 
 
 from models.vggs import Vgg16
-from models.googlenet import GoogLeNet
 import utils.utils as utils
 from utils.utils import LOWER_IMAGE_BOUND, UPPER_IMAGE_BOUND, GaussianSmoothing, KERNEL_SIZE, SUPPORTED_TRANSFORMS, SUPPORTED_MODELS
 
 
 # todo: experiment with different models (GoogLeNet, pytorch models trained on MIT Places?)
-# todo: experiment with different single/multiple layers
 # todo: add guide
 # todo: what does the network see for a particular class output set to 1 and other to 0
 
 
-def gradient_ascent(model, img, lr, cnt, layer_id_to_use=-1):
+# layer_activation.backward(layer) <- original implementation <=> with MSE / 2
+def gradient_ascent(model, img, lr, cnt, layer_ids_to_use):
     out = model(img)
-    layer = out[layer_id_to_use]
-    # loss = torch.norm(torch.flatten(layer), p=2)
-    loss = torch.nn.MSELoss(reduction='sum')(layer, torch.zeros_like(layer)) / 2
-    # layer.backward(layer)
+    activations = [out[layer_id_to_use] for layer_id_to_use in layer_ids_to_use]
+    losses = []
+    for layer_activation in activations:
+        loss_component = torch.nn.MSELoss(reduction='mean')(layer_activation, torch.zeros_like(layer_activation)) # torch.norm(torch.flatten(layer_activation), p=2)
+        losses.append(loss_component)
 
+    loss = torch.mean(torch.stack(losses))
     loss.backward()
     # todo: [2] other models trained on non-ImageNet datasets
     #  if I still don't get reasonable video stream
@@ -81,7 +82,7 @@ def deep_dream_static_image(config, img):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # checking whether you have a GPU
 
     model = utils.fetch_and_prepare_model(config['model'], device)
-    layer_id_to_use = model.layer_names.index(config['layer_to_use'][0])  # todo: only support single layer atm
+    layer_ids_to_use = [model.layer_names.index(layer_name) for layer_name in config['layer_to_use']]
 
     if img is None:  # in case the image wasn't specified load either image or start from noise
         img_path = os.path.join(config['input_images_path'], config['input_img_name'])
@@ -104,7 +105,7 @@ def deep_dream_static_image(config, img):
             h_shift, w_shift = np.random.randint(-config['spatial_shift_size'], config['spatial_shift_size'] + 1, 2)
             input_tensor = utils.random_circular_spatial_shift(input_tensor, h_shift, w_shift)
 
-            gradient_ascent(model, input_tensor, config['lr'], i, layer_id_to_use)  # gradient_ascent_adam(model, input_tensor)
+            gradient_ascent(model, input_tensor, config['lr'], i, layer_ids_to_use)  # gradient_ascent_adam(model, input_tensor)
 
             input_tensor = utils.random_circular_spatial_shift(input_tensor, h_shift, w_shift, should_undo=True)
 
@@ -144,11 +145,10 @@ if __name__ == "__main__":
     parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
     parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
     parser.add_argument("--model", type=str, choices=SUPPORTED_MODELS, help="Neural network (model) to use for dreaming", default=SUPPORTED_MODELS[0])
-    parser.add_argument("--layer_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu4_3'])
+    parser.add_argument("--layer_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu2_2', 'relu4_3'])
     parser.add_argument("--frame_transform", type=str, choices=SUPPORTED_TRANSFORMS,
                         help="Transform used to transform the output frame and feed it back to the network input", default=SUPPORTED_TRANSFORMS[0])
 
-    # todo: experiment with these
     parser.add_argument("--pyramid_size", type=int, help="Number of images in an image pyramid", default=4)
     parser.add_argument("--pyramid_ratio", type=float, help="Ratio of image sizes in the pyramid", default=1.3)
     parser.add_argument("--num_gradient_ascent_iterations", type=int, help="Number of gradient ascent iterations", default=10)
