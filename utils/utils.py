@@ -133,7 +133,7 @@ def transform_frame(config, frame):
 def create_image_pyramid(img, num_octaves, octave_scale):
     img_pyramid = [img]
     for i in range(num_octaves-1):  # img_pyramid will have "num_octaves" images
-        img_pyramid.append(cv.resize(img_pyramid[-1], (0, 0), fx=octave_scale, fy=octave_scale))
+        img_pyramid.append(cv.resize(img_pyramid[-1], (0, 0), fx=1./octave_scale, fy=1./octave_scale))
     return img_pyramid
 
 
