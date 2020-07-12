@@ -57,9 +57,11 @@ def gradient_ascent_adam(backbone_network, img):
     img.data = torch.max(torch.min(img, UPPER_IMAGE_BOUND), LOWER_IMAGE_BOUND)  # https://stackoverflow.com/questions/54738045/column-dependent-bounds-in-torch-clamp
 
 
-# Contains the gist of DeepDream algorithm - takes 15 minutes to write down
-# no spatial jitter, no octaves, no clipping policy, no advanced gradient normalization (std)
 def deep_dream_simple(img_path):
+    """
+        Contains the gist of DeepDream algorithm - takes 15 minutes to write down.
+        No support for: spatial jitter/shifting, octaves/image pyramid, clipping policy, gradient normalization.
+    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     img = utils.prepare_img(img_path, target_shape=500, device=device)
     img.requires_grad = True
@@ -148,8 +150,8 @@ if __name__ == "__main__":
     parser.add_argument("--is_video", type=bool, help="Create DeepDream video - default is DeepDream image", default=True)
     parser.add_argument("--video_length", type=int, help="Number of video frames to produce", default=30)
     parser.add_argument("--input_img_name", type=str, help="Input image name that will be used for dreaming", default='figures.jpg')
-    parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=True)
-    parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
+    parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
+    parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=1024)
     parser.add_argument("--model", type=str, choices=SUPPORTED_MODELS, help="Neural network (model) to use for dreaming", default=SUPPORTED_MODELS[0])
     parser.add_argument("--layer_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu4_3'])
     parser.add_argument("--frame_transform", type=str, choices=SUPPORTED_TRANSFORMS,
@@ -165,7 +167,7 @@ if __name__ == "__main__":
     parser.add_argument("--should_display", type=bool, help="Display intermediate dreaming results", default=False)
     args = parser.parse_args()
 
-    # Wrapping configuration into a dictionary - keeps things clean
+    # Wrapping configuration into a dictionary - keeping things clean
     config = dict()
     for arg in vars(args):
         config[arg] = getattr(args, arg)
