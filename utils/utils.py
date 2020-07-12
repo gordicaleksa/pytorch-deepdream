@@ -13,6 +13,10 @@ from torch import nn
 import scipy.ndimage as nd
 
 
+from models.vggs import Vgg16
+from models.googlenet import GoogLeNet
+
+
 IMAGENET_MEAN_1 = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 IMAGENET_STD_1 = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
@@ -23,6 +27,7 @@ KERNEL_SIZE = 9
 
 
 SUPPORTED_TRANSFORMS = ['central_zoom', 'rotate', 'spiral']
+SUPPORTED_MODELS = ['vgg16', 'googlenet']
 
 
 #
@@ -96,6 +101,16 @@ def save_and_maybe_display_image(config, dump_img, should_display=True, name_mod
 #
 # End of image manipulation util functions
 #
+
+
+def fetch_and_prepare_model(model_type, device):
+    if model_type == SUPPORTED_MODELS[0]:
+        model = Vgg16(requires_grad=False, show_progress=True).to(device)
+    elif model_type == SUPPORTED_MODELS[1]:
+        model = GoogLeNet(requires_grad=False, show_progress=True).to(device)
+    else:
+        raise Exception('Not yet supported.')
+    return model
 
 
 # todo: Add support for rotation and spiral transform
