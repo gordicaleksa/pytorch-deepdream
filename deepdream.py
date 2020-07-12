@@ -14,7 +14,7 @@ from utils.utils import LOWER_IMAGE_BOUND, UPPER_IMAGE_BOUND, GaussianSmoothing,
 from utils.video_utils import create_video_from_intermediate_results
 
 
-# todo: experiment with different models (GoogLeNet, pytorch models trained on MIT Places?)
+# todo: experiment with different models (GoogLeNet, pytorch models trained on MIT Places?) can I use caffe models?
 # todo: add guide
 
 
@@ -114,8 +114,8 @@ def deep_dream_static_image(config, img):
     return img
 
 
+# todo: checkout feed output into input DeepDream video whether they reference how they approached this
 def deep_dream_video(config):
-    # todo: analyze the 2 video repos
     img_path = os.path.join(config['input_images_path'], config['input_img_name'])
     # load numpy, [0, 1], channel-last, RGB image, None will cause it to start from the uniform noise [0, 1] image
     frame = None if config['use_noise'] else utils.load_image(img_path, target_shape=config['img_width'])
@@ -128,6 +128,11 @@ def deep_dream_video(config):
 
     # todo: add video creation function from frames
     create_video_from_intermediate_results(config)
+
+
+# todo: create video by applying deep_dream_static_image per video frame and packing those into video
+# todo: add blend support
+# todo: add optical flow support
 
 
 if __name__ == "__main__":
