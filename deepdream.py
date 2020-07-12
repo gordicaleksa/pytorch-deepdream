@@ -15,12 +15,11 @@ from utils.utils import LOWER_IMAGE_BOUND, UPPER_IMAGE_BOUND, GaussianSmoothing,
 
 # todo: experiment with different models (GoogLeNet, pytorch models trained on MIT Places?)
 # todo: add guide
-# todo: what does the network see for a particular class output set to 1 and other to 0
 
 
 # layer_activation.backward(layer) <- original implementation <=> with MSE / 2
-def gradient_ascent(model, img, lr, cnt, layer_ids_to_use):
-    out = model(img)
+def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
+    out = model(input_tensor)
     activations = [out[layer_id_to_use] for layer_id_to_use in layer_ids_to_use]
     losses = []
     for layer_activation in activations:
@@ -32,16 +31,16 @@ def gradient_ascent(model, img, lr, cnt, layer_ids_to_use):
     # todo: [2] other models trained on non-ImageNet datasets
     #  if I still don't get reasonable video stream
 
-    grad = img.grad.data
+    grad = input_tensor.grad.data
 
-    sigma = ((cnt + 1) / 10) * 2.0 + .5  # todo: tmp hack 10 is hardcoded
+    sigma = ((iteration + 1) / config['num_gradient_ascent_iterations']) * 2.0 + .5
     smooth_grad = GaussianSmoothing(3, KERNEL_SIZE, sigma)(grad)
 
     g_norm = torch.std(smooth_grad)  # g_norm = torch.mean(torch.abs(smooth_grad))
-    img.data += lr * (smooth_grad / g_norm)
-    img.grad.data.zero_()
+    input_tensor.data += config['lr'] * (smooth_grad / g_norm)
+    input_tensor.grad.data.zero_()
 
-    img.data = torch.max(torch.min(img, UPPER_IMAGE_BOUND), LOWER_IMAGE_BOUND)
+    input_tensor.data = torch.max(torch.min(input_tensor, UPPER_IMAGE_BOUND), LOWER_IMAGE_BOUND)
 
 
 def gradient_ascent_adam(backbone_network, img):
@@ -101,11 +100,11 @@ def deep_dream_static_image(config, img):
         img = cv.resize(img, (new_shape[1], new_shape[0]))
         input_tensor = utils.pytorch_input_adapter(img, device)
 
-        for i in range(config['num_gradient_ascent_iterations']):
+        for iteration in range(config['num_gradient_ascent_iterations']):
             h_shift, w_shift = np.random.randint(-config['spatial_shift_size'], config['spatial_shift_size'] + 1, 2)
             input_tensor = utils.random_circular_spatial_shift(input_tensor, h_shift, w_shift)
 
-            gradient_ascent(model, input_tensor, config['lr'], i, layer_ids_to_use)  # gradient_ascent_adam(model, input_tensor)
+            gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration)  # gradient_ascent_adam(model, input_tensor)
 
             input_tensor = utils.random_circular_spatial_shift(input_tensor, h_shift, w_shift, should_undo=True)
 
