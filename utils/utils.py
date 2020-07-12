@@ -137,6 +137,13 @@ def create_image_pyramid(img, num_octaves, octave_scale):
     return img_pyramid
 
 
+def get_new_shape(config, base_shape, pyramid_level):
+    pyramid_ratio = config['pyramid_ratio']
+    pyramid_size = config['pyramid_size']
+    exponent = pyramid_level - pyramid_size + 1
+    return np.round(np.float32(base_shape)*(pyramid_ratio**exponent)).astype(np.int32)
+
+
 def random_circular_spatial_shift(tensor, h_shift, w_shift, should_undo=False):
     if should_undo:
         h_shift = -h_shift

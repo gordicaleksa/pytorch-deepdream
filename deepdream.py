@@ -90,40 +90,31 @@ def deep_dream_static_image(config, img):
             shape = img.shape
             img = np.random.uniform(low=0.0, high=1.0, size=shape).astype(np.float32)
 
-    base_img = utils.preprocess_numpy_img(img)
+    img = utils.preprocess_numpy_img(img)
+    base_shape = img.shape[:-1]  # save initial height and width
 
-    # Contains "pyramid_size" number of copies of the same image but with different resolutions
-    img_pyramid = utils.create_image_pyramid(base_img, config['pyramid_size'], config['pyramid_ratio'])
-
-    detail = np.zeros_like(img_pyramid[-1])  # allocate image for network-produced details
-
-    best_img = []
-    jitter = config['spatial_shift_size']
+    # Note: simple rescaling the whole result and not only details (see original implementation) gave me better results
     # going from smaller to bigger resolution
-    for octave, octave_base in enumerate(reversed(img_pyramid)):
-        h, w = octave_base.shape[:2]
-        if octave > 0:  # we can avoid this special case
-            # upscale details from the previous octave
-            detail = cv.resize(detail, (w, h))
-        input_img = octave_base + detail
-        input_tensor = utils.pytorch_input_adapter(input_img, device)
+    for pyramid_level in range(config['pyramid_size']):
+        new_shape = utils.get_new_shape(config, base_shape, pyramid_level)
+        img = cv.resize(img, (new_shape[1], new_shape[0]))
+        input_tensor = utils.pytorch_input_adapter(img, device)
+
         for i in range(config['num_gradient_ascent_iterations']):
-            h_shift, w_shift = np.random.randint(-jitter, jitter + 1, 2)
+            h_shift, w_shift = np.random.randint(-config['spatial_shift_size'], config['spatial_shift_size'] + 1, 2)
             input_tensor = utils.random_circular_spatial_shift(input_tensor, h_shift, w_shift)
 
             gradient_ascent(model, input_tensor, config['lr'], i, layer_id_to_use)  # gradient_ascent_adam(model, input_tensor)
 
             input_tensor = utils.random_circular_spatial_shift(input_tensor, h_shift, w_shift, should_undo=True)
 
-        # todo: [1] consider just rescaling without doing subtraction
-        detail = utils.pytorch_output_adapter(input_tensor) - octave_base
-        current_img = utils.pytorch_output_adapter(input_tensor)
-        best_img = current_img
-        # save_and_maybe_display_image(current_img, channel_last=True)
-    return best_img
+        img = utils.pytorch_output_adapter(input_tensor)
+
+    return img
 
 
 def deep_dream_video(config):
+    # todo: analyze the 2 video repos
     img_path = os.path.join(config['input_images_path'], config['input_img_name'])
     # load numpy, [0, 1], channel-last, RGB image, None will cause it to start from the uniform noise [0, 1] image
     frame = None if config['use_noise'] else utils.load_image(img_path, target_shape=config['img_width'])
@@ -148,10 +139,10 @@ if __name__ == "__main__":
     #
     parser = argparse.ArgumentParser()
     parser.add_argument("--is_video", type=bool, help="Create DeepDream video - default is DeepDream image", default=True)
-    parser.add_argument("--video_length", type=int, help="Number of video frames to produce", default=30)
+    parser.add_argument("--video_length", type=int, help="Number of video frames to produce", default=100)
     parser.add_argument("--input_img_name", type=str, help="Input image name that will be used for dreaming", default='figures.jpg')
     parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
-    parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=1024)
+    parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
     parser.add_argument("--model", type=str, choices=SUPPORTED_MODELS, help="Neural network (model) to use for dreaming", default=SUPPORTED_MODELS[0])
     parser.add_argument("--layer_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu4_3'])
     parser.add_argument("--frame_transform", type=str, choices=SUPPORTED_TRANSFORMS,
@@ -159,9 +150,9 @@ if __name__ == "__main__":
 
     # todo: experiment with these
     parser.add_argument("--pyramid_size", type=int, help="Number of images in an image pyramid", default=4)
-    parser.add_argument("--pyramid_ratio", type=float, help="Ratio of image sizes in the pyramid", default=1.4)
+    parser.add_argument("--pyramid_ratio", type=float, help="Ratio of image sizes in the pyramid", default=1.3)
     parser.add_argument("--num_gradient_ascent_iterations", type=int, help="Number of gradient ascent iterations", default=10)
-    parser.add_argument("--lr", type=float, help="Learning rate i.e. step size in gradient ascent", default=0.09)
+    parser.add_argument("--lr", type=float, help="Learning rate i.e. step size in gradient ascent", default=0.2)
     parser.add_argument("--spatial_shift_size", type=int, help='Number of pixels to randomly shift image before grad ascent', default=32)
 
     parser.add_argument("--should_display", type=bool, help="Display intermediate dreaming results", default=False)
