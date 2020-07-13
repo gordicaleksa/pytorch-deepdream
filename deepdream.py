@@ -4,7 +4,6 @@ import argparse
 
 import numpy as np
 import torch
-from torch.optim import Adam
 import cv2 as cv
 import shutil
 import matplotlib.pyplot as plt
@@ -17,21 +16,6 @@ import utils.video_utils as video_utils
 
 # todo: experiment with different models (GoogLeNet, pytorch models trained on MIT Places?) can I use caffe models?
 # todo: add guide
-
-
-# Not used atm
-def gradient_ascent_adam(backbone_network, img):
-    optimizer = Adam((img,), lr=0.09)
-
-    out = backbone_network(img)
-    layer = out.inception4c
-    loss = -torch.nn.MSELoss(reduction='sum')(layer, torch.zeros_like(layer)) / 2
-    loss.backward()
-
-    optimizer.step()
-    optimizer.zero_grad()
-
-    img.data = torch.max(torch.min(img, UPPER_IMAGE_BOUND), LOWER_IMAGE_BOUND)  # https://stackoverflow.com/questions/54738045/column-dependent-bounds-in-torch-clamp
 
 
 # layer_activation.backward(layer) <- original implementation <=> with MSE / 2
@@ -125,9 +109,7 @@ def deep_dream_video(config):
         frame_path = os.path.join(tmp_input_dir, frame_name)
         frame = utils.load_image(frame_path, target_shape=config['img_width'])
         if config['blend'] is not None and last_img is not None:
-            # plt.imshow(np.hstack([last_img, frame])); plt.show()
             frame = utils.linear_blend(last_img, frame, config['blend'])
-            # plt.imshow(frame); plt.show()
 
         dreamed_frame = deep_dream_static_image(config, frame)
         last_img = dreamed_frame
