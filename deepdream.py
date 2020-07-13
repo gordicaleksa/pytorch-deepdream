@@ -9,7 +9,6 @@ import cv2 as cv
 import shutil
 
 
-from models.vggs import Vgg16
 import utils.utils as utils
 from utils.utils import LOWER_IMAGE_BOUND, UPPER_IMAGE_BOUND, GaussianSmoothing, KERNEL_SIZE, SUPPORTED_TRANSFORMS, SUPPORTED_MODELS
 import utils.video_utils as video_utils
@@ -108,11 +107,10 @@ def deep_dream_video_ouroboros(config):
         utils.save_and_maybe_display_image(config, frame, should_display=config['should_display'], name_modifier=frame_id)
         frame = utils.transform_frame(config, frame)  # transform frame e.g. central zoom, spiral, etc.
 
-    # todo: add video creation function from frames
+    # todo: test this
     video_utils.create_video_from_intermediate_results(config)
 
 
-# todo: create video by applying deep_dream_static_image per video frame and packing those into video
 # todo: add blend support
 # todo: add optical flow support
 def deep_dream_video(config):
@@ -121,21 +119,19 @@ def deep_dream_video(config):
     config['dump_dir'] = tmp_dump_dir
     os.makedirs(tmp_dump_dir, exist_ok=True)
 
-    video_utils.dump_frames(video_path, tmp_dump_dir)
+    metadata = video_utils.dump_frames(video_path, config['dump_dir'])
+    #
+    # for frame_id, frame_name in enumerate(os.listdir(tmp_dump_dir)):
+    #     frame_path = os.path.join(tmp_dump_dir, frame_name)
+    #     frame = utils.load_image(frame_path, target_shape=config['img_width'])
+    #     dreamed_frame = deep_dream_static_image(config, frame)
+    #     utils.save_and_maybe_display_image(config, dreamed_frame, should_display=config['should_display'], name_modifier=frame_id)
 
-    for frame_id, frame_name in enumerate(os.listdir(tmp_dump_dir)):
-        frame_path = os.path.join(tmp_dump_dir, frame_name)
-        frame = utils.load_image(frame_path, target_shape=config['img_width'])
-        dreamed_frame = deep_dream_static_image(config, frame)
-        utils.save_and_maybe_display_image(config, dreamed_frame, should_display=config['should_display'], name_modifier=frame_id)
+    # todo: debug why video creation is failing
+    video_utils.create_video_from_intermediate_results(config, metadata)
 
-    # todo: [2] make it generic enough to be able to called from wherever
-    video_path = video_utils.create_video_from_intermediate_results(config)
-
-    shutil.move(video_path, config['out_videos_path'])  # move final video to out videos path
-
-    shutil.rmtree(tmp_dump_dir)  # remove tmp files
-    print(f'Deleted tmp frame dump directory {tmp_dump_dir}.')
+    # shutil.rmtree(tmp_dump_dir)  # remove tmp files
+    # print(f'Deleted tmp frame dump directory {tmp_dump_dir}.')
 
 
 if __name__ == "__main__":
@@ -152,7 +148,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--is_video", type=bool, help="Create DeepDream video - default is DeepDream image", default=True)
     parser.add_argument("--video_length", type=int, help="Number of video frames to produce", default=100)
-    parser.add_argument("--input", type=str, help="Input image/video name that will be used for dreaming", default='video.mp4')
+    parser.add_argument("--input", type=str, help="Input image/video name that will be used for dreaming", default='cut_video.mp4')
     parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
     parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
     parser.add_argument("--model", type=str, choices=SUPPORTED_MODELS, help="Neural network (model) to use for dreaming", default=SUPPORTED_MODELS[0])
@@ -178,7 +174,7 @@ if __name__ == "__main__":
     config['out_videos_path'] = out_videos_path
     config['dump_dir'] = config['out_videos_path'] if config['is_video'] else config['out_images_path']
 
-    # DeepDream algorithm
+    # DeepDream algorithm in 3 flavours: static image, video and ouroboros (feeding net output to it's input)
     if config['input'].endswith('.mp4'):  # only support mp4 atm
         deep_dream_video(config)
     elif config['is_video']:
