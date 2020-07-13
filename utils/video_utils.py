@@ -21,7 +21,8 @@ def create_video_name(config):
 
     input_name = os.path.basename(config['input']).split('.')[0]
     model_name = os.path.basename(config['model']).split('.')[0]
-    infix = f'{input_name}_width_{str(config["img_width"])}_model_{model_name}'
+    blend_info = 'blend_none' if config['blend'] is None else f'blend_{config["blend"]}'
+    infix = f'{input_name}_width_{str(config["img_width"])}_model_{model_name}_{blend_info}'
 
     suffix = '.mp4'
     video_name = prefix + infix + suffix

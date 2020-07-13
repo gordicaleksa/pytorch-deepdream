@@ -7,6 +7,7 @@ import torch
 from torch.optim import Adam
 import cv2 as cv
 import shutil
+import matplotlib.pyplot as plt
 
 
 import utils.utils as utils
@@ -92,7 +93,7 @@ def deep_dream_static_image(config, img):
 
         img = utils.pytorch_output_adapter(input_tensor)
 
-    return img
+    return utils.post_process_numpy_image(img)
 
 
 # todo: checkout feed output into input DeepDream video whether they reference how they approached this
@@ -111,26 +112,36 @@ def deep_dream_video_ouroboros(config):
     video_utils.create_video_from_intermediate_results(config)
 
 
-# todo: add blend support
 # todo: add optical flow support
 def deep_dream_video(config):
     video_path = os.path.join(config['inputs_path'], config['input'])
-    tmp_dump_dir = os.path.join(config['out_videos_path'], 'tmp')
-    config['dump_dir'] = tmp_dump_dir
-    os.makedirs(tmp_dump_dir, exist_ok=True)
+    tmp_input_dir = os.path.join(config['out_videos_path'], 'tmp_input')
+    tmp_output_dir = os.path.join(config['out_videos_path'], 'tmp_out4')
+    config['dump_dir'] = tmp_output_dir
+    os.makedirs(tmp_input_dir, exist_ok=True)
+    os.makedirs(tmp_output_dir, exist_ok=True)
 
-    metadata = video_utils.dump_frames(video_path, config['dump_dir'])
+    metadata = video_utils.dump_frames(video_path, tmp_input_dir)
 
-    for frame_id, frame_name in enumerate(os.listdir(tmp_dump_dir)):
-        frame_path = os.path.join(tmp_dump_dir, frame_name)
+    last_img = None
+    for frame_id, frame_name in enumerate(os.listdir(tmp_input_dir)):
+        print(f'Processing frame {frame_id}')
+        frame_path = os.path.join(tmp_input_dir, frame_name)
         frame = utils.load_image(frame_path, target_shape=config['img_width'])
+        if config['blend'] is not None and last_img is not None:
+            # plt.imshow(np.hstack([last_img, frame])); plt.show()
+            frame = utils.linear_blend(last_img, frame, config['blend'])
+            # plt.imshow(frame); plt.show()
+
         dreamed_frame = deep_dream_static_image(config, frame)
+        last_img = dreamed_frame
         utils.save_and_maybe_display_image(config, dreamed_frame, should_display=config['should_display'], name_modifier=frame_id)
 
     video_utils.create_video_from_intermediate_results(config, metadata)
 
-    shutil.rmtree(tmp_dump_dir)  # remove tmp files
-    print(f'Deleted tmp frame dump directory {tmp_dump_dir}.')
+    shutil.rmtree(tmp_input_dir)  # remove tmp files
+    # shutil.rmtree(tmp_output_dir)  # remove tmp files
+    print(f'Deleted tmp frame dump directory {tmp_input_dir}.')
 
 
 if __name__ == "__main__":
@@ -147,19 +158,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--is_video", type=bool, help="Create DeepDream video - default is DeepDream image", default=True)
     parser.add_argument("--video_length", type=int, help="Number of video frames to produce", default=100)
-    parser.add_argument("--input", type=str, help="Input image/video name that will be used for dreaming", default='cut_video.mp4')
+    parser.add_argument("--input", type=str, help="Input image/video name that will be used for dreaming", default='figures.jpeg')
     parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
-    parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
+    parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=800)
     parser.add_argument("--model", type=str, choices=SUPPORTED_MODELS, help="Neural network (model) to use for dreaming", default=SUPPORTED_MODELS[0])
-    parser.add_argument("--layer_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu4_3'])
+    parser.add_argument("--layer_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu3_3', 'relu4_3'])
     parser.add_argument("--frame_transform", type=str, choices=SUPPORTED_TRANSFORMS,
                         help="Transform used to transform the output frame and feed it back to the network input", default=SUPPORTED_TRANSFORMS[0])
 
     parser.add_argument("--pyramid_size", type=int, help="Number of images in an image pyramid", default=4)
     parser.add_argument("--pyramid_ratio", type=float, help="Ratio of image sizes in the pyramid", default=1.3)
     parser.add_argument("--num_gradient_ascent_iterations", type=int, help="Number of gradient ascent iterations", default=10)
-    parser.add_argument("--lr", type=float, help="Learning rate i.e. step size in gradient ascent", default=0.2)
+    parser.add_argument("--lr", type=float, help="Learning rate i.e. step size in gradient ascent", default=0.02)
     parser.add_argument("--spatial_shift_size", type=int, help='Number of pixels to randomly shift image before grad ascent', default=32)
+
+    parser.add_argument("--blend", type=float, help="Blend coefficient for video creation", default=0.85)
 
     parser.add_argument("--should_display", type=bool, help="Display intermediate dreaming results", default=False)
     args = parser.parse_args()

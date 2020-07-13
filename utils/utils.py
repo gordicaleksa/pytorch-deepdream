@@ -71,7 +71,7 @@ def post_process_numpy_image(dump_img):
     mean = IMAGENET_MEAN_1.reshape(1, 1, -1)
     std = IMAGENET_STD_1.reshape(1, 1, -1)
     dump_img = (dump_img * std) + mean  # de-normalize
-    dump_img = (np.clip(dump_img, 0., 1.) * 255).astype(np.uint8)
+    dump_img = np.clip(dump_img, 0., 1.)
 
     return dump_img
 
@@ -89,18 +89,24 @@ def pytorch_output_adapter(img):
 def save_and_maybe_display_image(config, dump_img, should_display=True, name_modifier=None):
     assert isinstance(dump_img, np.ndarray), f'Expected numpy array got {type(dump_img)}.'
 
-    dump_img = post_process_numpy_image(dump_img)
-
     if name_modifier is not None:
         dump_img_name = str(name_modifier).zfill(6) + '.jpg'
     else:
         dump_img_name = config['input'].split('.')[0] + '_width_' + str(config['img_width']) + '_model_' + config['model'].split('.')[0] + '.jpg'
+
+    if dump_img.dtype != np.uint8:
+        dump_img = (dump_img*255).astype(np.uint8)
 
     cv.imwrite(os.path.join(config['dump_dir'], dump_img_name), dump_img[:, :, ::-1])  # ::-1 because opencv expects BGR (and not RGB) format...
 
     if should_display:
         plt.imshow(dump_img)
         plt.show()
+
+
+def linear_blend(img1, img2, alpha=0.5):
+    return img1 + alpha * (img2 - img1)
+
 
 #
 # End of image manipulation util functions
