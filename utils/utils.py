@@ -128,7 +128,7 @@ def fetch_and_prepare_model(model_type, device):
 # todo: Add support for rotation and spiral transform
 def transform_frame(config, frame):
     if config['frame_transform'] == SUPPORTED_TRANSFORMS[0]:
-        s = 0.001  # todo: tmp hack
+        s = 0.05
         h, w = frame.shape[:2]
         frame = nd.affine_transform(frame, np.asarray([1 - s, 1 - s, 1]), [h * s / 2, w * s / 2, 0.0], order=1)
     elif config['frame_transform'] == SUPPORTED_TRANSFORMS[1]:

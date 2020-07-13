@@ -45,8 +45,6 @@ def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
 
     loss = torch.mean(torch.stack(losses))
     loss.backward()
-    # todo: [2] other models trained on non-ImageNet datasets
-    #  if I still don't get reasonable video stream
 
     grad = input_tensor.grad.data
 
@@ -96,7 +94,6 @@ def deep_dream_static_image(config, img):
     return utils.post_process_numpy_image(img)
 
 
-# todo: checkout feed output into input DeepDream video whether they reference how they approached this
 def deep_dream_video_ouroboros(config):
     img_path = os.path.join(config['inputs_path'], config['input'])
     # load numpy, [0, 1], channel-last, RGB image, None will cause it to start from the uniform noise [0, 1] image
@@ -108,7 +105,6 @@ def deep_dream_video_ouroboros(config):
         utils.save_and_maybe_display_image(config, frame, should_display=config['should_display'], name_modifier=frame_id)
         frame = utils.transform_frame(config, frame)  # transform frame e.g. central zoom, spiral, etc.
 
-    # todo: test this
     video_utils.create_video_from_intermediate_results(config)
 
 
@@ -158,18 +154,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--is_video", type=bool, help="Create DeepDream video - default is DeepDream image", default=True)
     parser.add_argument("--video_length", type=int, help="Number of video frames to produce", default=100)
-    parser.add_argument("--input", type=str, help="Input image/video name that will be used for dreaming", default='figures.jpeg')
+    parser.add_argument("--input", type=str, help="Input image/video name that will be used for dreaming", default='figures.jpg')
     parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
-    parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=800)
+    parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
     parser.add_argument("--model", type=str, choices=SUPPORTED_MODELS, help="Neural network (model) to use for dreaming", default=SUPPORTED_MODELS[0])
-    parser.add_argument("--layer_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu3_3', 'relu4_3'])
+    parser.add_argument("--layer_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu4_3'])
     parser.add_argument("--frame_transform", type=str, choices=SUPPORTED_TRANSFORMS,
                         help="Transform used to transform the output frame and feed it back to the network input", default=SUPPORTED_TRANSFORMS[0])
 
     parser.add_argument("--pyramid_size", type=int, help="Number of images in an image pyramid", default=4)
     parser.add_argument("--pyramid_ratio", type=float, help="Ratio of image sizes in the pyramid", default=1.3)
     parser.add_argument("--num_gradient_ascent_iterations", type=int, help="Number of gradient ascent iterations", default=10)
-    parser.add_argument("--lr", type=float, help="Learning rate i.e. step size in gradient ascent", default=0.02)
+    parser.add_argument("--lr", type=float, help="Learning rate i.e. step size in gradient ascent", default=0.09)
     parser.add_argument("--spatial_shift_size", type=int, help='Number of pixels to randomly shift image before grad ascent', default=32)
 
     parser.add_argument("--blend", type=float, help="Blend coefficient for video creation", default=0.85)
