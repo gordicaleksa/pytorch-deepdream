@@ -6,16 +6,32 @@ import numpy as np
 import torch
 from torch.optim import Adam
 import cv2 as cv
+import shutil
 
 
 from models.vggs import Vgg16
 import utils.utils as utils
 from utils.utils import LOWER_IMAGE_BOUND, UPPER_IMAGE_BOUND, GaussianSmoothing, KERNEL_SIZE, SUPPORTED_TRANSFORMS, SUPPORTED_MODELS
-from utils.video_utils import create_video_from_intermediate_results
+import utils.video_utils as video_utils
 
 
 # todo: experiment with different models (GoogLeNet, pytorch models trained on MIT Places?) can I use caffe models?
 # todo: add guide
+
+
+# Not used atm
+def gradient_ascent_adam(backbone_network, img):
+    optimizer = Adam((img,), lr=0.09)
+
+    out = backbone_network(img)
+    layer = out.inception4c
+    loss = -torch.nn.MSELoss(reduction='sum')(layer, torch.zeros_like(layer)) / 2
+    loss.backward()
+
+    optimizer.step()
+    optimizer.zero_grad()
+
+    img.data = torch.max(torch.min(img, UPPER_IMAGE_BOUND), LOWER_IMAGE_BOUND)  # https://stackoverflow.com/questions/54738045/column-dependent-bounds-in-torch-clamp
 
 
 # layer_activation.backward(layer) <- original implementation <=> with MSE / 2
@@ -44,40 +60,6 @@ def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
     input_tensor.data = torch.max(torch.min(input_tensor, UPPER_IMAGE_BOUND), LOWER_IMAGE_BOUND)
 
 
-def gradient_ascent_adam(backbone_network, img):
-    optimizer = Adam((img,), lr=0.09)
-
-    out = backbone_network(img)
-    layer = out.inception4c
-    loss = -torch.nn.MSELoss(reduction='sum')(layer, torch.zeros_like(layer)) / 2
-    loss.backward()
-
-    optimizer.step()
-    optimizer.zero_grad()
-
-    img.data = torch.max(torch.min(img, UPPER_IMAGE_BOUND), LOWER_IMAGE_BOUND)  # https://stackoverflow.com/questions/54738045/column-dependent-bounds-in-torch-clamp
-
-
-def deep_dream_simple(img_path):
-    """
-        Contains the gist of DeepDream algorithm - takes 15 minutes to write down.
-        No support for: spatial jitter/shifting, octaves/image pyramid, clipping policy, gradient normalization.
-    """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    img = utils.prepare_img(img_path, target_shape=500, device=device)
-    img.requires_grad = True
-    backbone_network = Vgg16(requires_grad=False).to(device)
-
-    n_iter = 2
-    lr = 0.2
-
-    for iter in range(n_iter):
-        gradient_ascent(backbone_network, img, lr)
-
-    img = img.to('cpu').detach().numpy()[0]
-    utils.save_and_maybe_display_image(img)
-
-
 def deep_dream_static_image(config, img):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # checking whether you have a GPU
 
@@ -85,7 +67,7 @@ def deep_dream_static_image(config, img):
     layer_ids_to_use = [model.layer_names.index(layer_name) for layer_name in config['layer_to_use']]
 
     if img is None:  # in case the image wasn't specified load either image or start from noise
-        img_path = os.path.join(config['input_images_path'], config['input_img_name'])
+        img_path = os.path.join(config['inputs_path'], config['input'])
         img = utils.load_image(img_path, target_shape=config['img_width'])  # load numpy, [0, 1], channel-last, RGB image
         if config['use_noise']:
             shape = img.shape
@@ -115,8 +97,8 @@ def deep_dream_static_image(config, img):
 
 
 # todo: checkout feed output into input DeepDream video whether they reference how they approached this
-def deep_dream_video(config):
-    img_path = os.path.join(config['input_images_path'], config['input_img_name'])
+def deep_dream_video_ouroboros(config):
+    img_path = os.path.join(config['inputs_path'], config['input'])
     # load numpy, [0, 1], channel-last, RGB image, None will cause it to start from the uniform noise [0, 1] image
     frame = None if config['use_noise'] else utils.load_image(img_path, target_shape=config['img_width'])
 
@@ -127,19 +109,40 @@ def deep_dream_video(config):
         frame = utils.transform_frame(config, frame)  # transform frame e.g. central zoom, spiral, etc.
 
     # todo: add video creation function from frames
-    create_video_from_intermediate_results(config)
+    video_utils.create_video_from_intermediate_results(config)
 
 
 # todo: create video by applying deep_dream_static_image per video frame and packing those into video
 # todo: add blend support
 # todo: add optical flow support
+def deep_dream_video(config):
+    video_path = os.path.join(config['inputs_path'], config['input'])
+    tmp_dump_dir = os.path.join(config['out_videos_path'], 'tmp')
+    config['dump_dir'] = tmp_dump_dir
+    os.makedirs(tmp_dump_dir, exist_ok=True)
+
+    video_utils.dump_frames(video_path, tmp_dump_dir)
+
+    for frame_id, frame_name in enumerate(os.listdir(tmp_dump_dir)):
+        frame_path = os.path.join(tmp_dump_dir, frame_name)
+        frame = utils.load_image(frame_path, target_shape=config['img_width'])
+        dreamed_frame = deep_dream_static_image(config, frame)
+        utils.save_and_maybe_display_image(config, dreamed_frame, should_display=config['should_display'], name_modifier=frame_id)
+
+    # todo: [2] make it generic enough to be able to called from wherever
+    video_path = video_utils.create_video_from_intermediate_results(config)
+
+    shutil.move(video_path, config['out_videos_path'])  # move final video to out videos path
+
+    shutil.rmtree(tmp_dump_dir)  # remove tmp files
+    print(f'Deleted tmp frame dump directory {tmp_dump_dir}.')
 
 
 if __name__ == "__main__":
     #
     # Fixed args - don't change these unless you have a good reason
     #
-    input_images_path = os.path.join(os.path.dirname(__file__), 'data', 'input-images')
+    inputs_path = os.path.join(os.path.dirname(__file__), 'data', 'input-images')
     out_images_path = os.path.join(os.path.dirname(__file__), 'data', 'out-images')
     out_videos_path = os.path.join(os.path.dirname(__file__), 'data', 'out-videos')
 
@@ -149,7 +152,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--is_video", type=bool, help="Create DeepDream video - default is DeepDream image", default=True)
     parser.add_argument("--video_length", type=int, help="Number of video frames to produce", default=100)
-    parser.add_argument("--input_img_name", type=str, help="Input image name that will be used for dreaming", default='figures.jpg')
+    parser.add_argument("--input", type=str, help="Input image/video name that will be used for dreaming", default='video.mp4')
     parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
     parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
     parser.add_argument("--model", type=str, choices=SUPPORTED_MODELS, help="Neural network (model) to use for dreaming", default=SUPPORTED_MODELS[0])
@@ -170,13 +173,16 @@ if __name__ == "__main__":
     config = dict()
     for arg in vars(args):
         config[arg] = getattr(args, arg)
-    config['input_images_path'] = input_images_path
+    config['inputs_path'] = inputs_path
     config['out_images_path'] = out_images_path
     config['out_videos_path'] = out_videos_path
+    config['dump_dir'] = config['out_videos_path'] if config['is_video'] else config['out_images_path']
 
     # DeepDream algorithm
-    if config['is_video']:
+    if config['input'].endswith('.mp4'):  # only support mp4 atm
         deep_dream_video(config)
+    elif config['is_video']:
+        deep_dream_video_ouroboros(config)
     else:
         deep_dream_static_image(config, img=None)  # img will be loaded inside of deep_dream_static_image
 

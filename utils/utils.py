@@ -90,12 +90,13 @@ def save_and_maybe_display_image(config, dump_img, should_display=True, name_mod
     assert isinstance(dump_img, np.ndarray), f'Expected numpy array got {type(dump_img)}.'
 
     dump_img = post_process_numpy_image(dump_img)
-    name_infix = '' if name_modifier is None else f'_{str(name_modifier).zfill(4)}_'
-    dump_img_name = config['input_img_name'].split('.')[0] + '_width_' + str(config['img_width']) + '_model_' + config['model'].split('.')[0] + name_infix + '.jpg'
-    if config['is_video']:  # todo: tmp hack because of ffmpeg
-        dump_img_name = str(name_modifier).zfill(4) + '.jpg'
-    dump_img_dir = config['out_videos_path'] if config['is_video'] else config['out_images_path']
-    cv.imwrite(os.path.join(dump_img_dir, dump_img_name), dump_img[:, :, ::-1])  # ::-1 because opencv expects BGR (and not RGB) format...
+
+    if name_modifier is not None:
+        dump_img_name = str(name_modifier).zfill(6) + '.jpg'
+    else:
+        dump_img_name = config['input'].split('.')[0] + '_width_' + str(config['img_width']) + '_model_' + config['model'].split('.')[0] + '.jpg'
+
+    cv.imwrite(os.path.join(config['dump_dir'], dump_img_name), dump_img[:, :, ::-1])  # ::-1 because opencv expects BGR (and not RGB) format...
 
     if should_display:
         plt.imshow(dump_img)

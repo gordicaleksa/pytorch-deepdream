@@ -3,6 +3,9 @@ import subprocess
 import shutil
 
 
+import cv2 as cv
+
+
 def create_video_from_intermediate_results(config):
     #
     # change this depending on what you want to accomplish (modify out video name, change fps and trim video)
@@ -21,5 +24,23 @@ def create_video_from_intermediate_results(config):
         encoding_options = ['-c:v', 'libx264', '-crf', '25', '-pix_fmt', 'yuv420p']
         out_video_path = os.path.join(dump_path, out_file_name)
         subprocess.call([ffmpeg, *input_options, *trim_video_command, *encoding_options, out_video_path])
+        return out_video_path
     else:
-        print(f'{ffmpeg} not found in the system path, aborting.')
+        raise Exception(f'{ffmpeg} not found in the system path, aborting.')
+
+
+def dump_frames(video_path, dump_dir):
+    ffmpeg = 'ffmpeg.exe'
+    if shutil.which(ffmpeg):  # if ffmpeg.exe is in system path
+        cap = cv.VideoCapture(video_path)
+        fps = int(cap.get(cv.CAP_PROP_FPS))
+
+        input_options = ['-i', video_path]
+        extract_options = ['-r', str(fps)]
+        out_frame_pattern = os.path.join(dump_dir, 'frame_%6d.jpg')
+
+        subprocess.call([ffmpeg, *input_options, *extract_options, out_frame_pattern])
+        return out_frame_pattern
+    else:
+        raise Exception(f'{ffmpeg} not found in the system path, aborting.')
+

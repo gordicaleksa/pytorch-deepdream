@@ -10,6 +10,8 @@ import cv2 as cv
 
 
 import utils.utils as utils
+from deepdream import gradient_ascent
+from models.vggs import Vgg16
 
 
 # rotation:
@@ -78,10 +80,30 @@ def play_with_pytorch_gradients():
     # backward is usually called on L-node with unit tensor because dL/L = 1
 
 
+def deep_dream_simple(img_path):
+    """
+        Contains the gist of DeepDream algorithm - takes 15 minutes to write down.
+        No support for: spatial jitter/shifting, octaves/image pyramid, clipping policy, gradient normalization.
+    """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    img = utils.prepare_img(img_path, target_shape=500, device=device)
+    img.requires_grad = True
+    backbone_network = Vgg16(requires_grad=False).to(device)
+
+    n_iter = 2
+    lr = 0.2
+
+    for iter in range(n_iter):
+        gradient_ascent(backbone_network, img, lr)
+
+    img = img.to('cpu').detach().numpy()[0]
+    utils.save_and_maybe_display_image(img)
+
+
 def understand_blend():
-    input_images_path = os.path.join(os.path.dirname(__file__), 'data', 'input-images')
-    img1 = utils.load_image(os.path.join(input_images_path, 'figures.jpg'), (500, 500))
-    img2 = utils.load_image(os.path.join(input_images_path, 'cloud.jfif'), (500, 500))
+    inputs_path = os.path.join(os.path.dirname(__file__), 'data', 'input-images')
+    img1 = utils.load_image(os.path.join(inputs_path, 'figures.jpg'), (500, 500))
+    img2 = utils.load_image(os.path.join(inputs_path, 'cloud.jfif'), (500, 500))
 
     for alpha in np.arange(0, 1.2, 0.2):
         blend = img1 + alpha * (img2 - img1)
@@ -90,9 +112,9 @@ def understand_blend():
 
 
 def visualize_optical_flow():
-    input_images_path = os.path.join(os.path.dirname(__file__), 'data', 'input-images')
-    img1 = cv.cvtColor(utils.load_image(os.path.join(input_images_path, 'out_032.png')), cv.COLOR_BGR2GRAY)
-    img2 = cv.cvtColor(utils.load_image(os.path.join(input_images_path, 'out_033.png')), cv.COLOR_BGR2GRAY)
+    inputs_path = os.path.join(os.path.dirname(__file__), 'data', 'input-images')
+    img1 = cv.cvtColor(utils.load_image(os.path.join(inputs_path, 'out_032.png')), cv.COLOR_BGR2GRAY)
+    img2 = cv.cvtColor(utils.load_image(os.path.join(inputs_path, 'out_033.png')), cv.COLOR_BGR2GRAY)
 
     # plt.imshow(np.hstack([img1, img2])); plt.show()
 
@@ -112,8 +134,4 @@ def visualize_optical_flow():
 
 
 if __name__ == "__main__":
-
-
-
-
-
+    print('dummy')
