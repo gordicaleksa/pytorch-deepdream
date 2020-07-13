@@ -41,8 +41,9 @@ def create_video_from_intermediate_results(config, metadata=None):
         input_options = ['-r', str(fps), '-i', img_pattern]
         trim_video_command = ['-start_number', str(first_frame), '-vframes', str(number_of_frames_to_process)]
         encoding_options = ['-c:v', 'libx264', '-crf', '25', '-pix_fmt', 'yuv420p']
+        pad_options = ['-vf', 'pad=ceil(iw/2)*2:ceil(ih/2)*2']  # libx264 won't work for odd dimensions
         out_video_path = os.path.join(config['out_videos_path'], out_file_name)
-        subprocess.call([ffmpeg, *input_options, *trim_video_command, *encoding_options, out_video_path])
+        subprocess.call([ffmpeg, *input_options, *trim_video_command, *encoding_options, *pad_options, out_video_path])
         print(f'Saved video to {out_video_path}.')
         return out_video_path
     else:

@@ -120,18 +120,17 @@ def deep_dream_video(config):
     os.makedirs(tmp_dump_dir, exist_ok=True)
 
     metadata = video_utils.dump_frames(video_path, config['dump_dir'])
-    #
-    # for frame_id, frame_name in enumerate(os.listdir(tmp_dump_dir)):
-    #     frame_path = os.path.join(tmp_dump_dir, frame_name)
-    #     frame = utils.load_image(frame_path, target_shape=config['img_width'])
-    #     dreamed_frame = deep_dream_static_image(config, frame)
-    #     utils.save_and_maybe_display_image(config, dreamed_frame, should_display=config['should_display'], name_modifier=frame_id)
 
-    # todo: debug why video creation is failing
+    for frame_id, frame_name in enumerate(os.listdir(tmp_dump_dir)):
+        frame_path = os.path.join(tmp_dump_dir, frame_name)
+        frame = utils.load_image(frame_path, target_shape=config['img_width'])
+        dreamed_frame = deep_dream_static_image(config, frame)
+        utils.save_and_maybe_display_image(config, dreamed_frame, should_display=config['should_display'], name_modifier=frame_id)
+
     video_utils.create_video_from_intermediate_results(config, metadata)
 
-    # shutil.rmtree(tmp_dump_dir)  # remove tmp files
-    # print(f'Deleted tmp frame dump directory {tmp_dump_dir}.')
+    shutil.rmtree(tmp_dump_dir)  # remove tmp files
+    print(f'Deleted tmp frame dump directory {tmp_dump_dir}.')
 
 
 if __name__ == "__main__":
