@@ -1,6 +1,7 @@
 import os
 import math
 import numbers
+import enum
 
 
 import cv2 as cv
@@ -16,19 +17,10 @@ import scipy.ndimage as nd
 from models.vggs import Vgg16
 from models.googlenet import GoogLeNet
 from models.resnets import ResNet50
+from models.alexnet import AlexNet
 
 
-IMAGENET_MEAN_1 = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-IMAGENET_STD_1 = np.array([0.229, 0.224, 0.225], dtype=np.float32)
-
-
-LOWER_IMAGE_BOUND = torch.tensor((-IMAGENET_MEAN_1 / IMAGENET_STD_1).reshape(1, -1, 1, 1)).to('cuda')
-UPPER_IMAGE_BOUND = torch.tensor(((1 - IMAGENET_MEAN_1) / IMAGENET_STD_1).reshape(1, -1, 1, 1)).to('cuda')
-KERNEL_SIZE = 9
-
-
-SUPPORTED_TRANSFORMS = ['central_zoom', 'rotate', 'spiral']
-SUPPORTED_MODELS = ['vgg16', 'googlenet', 'resnet50']
+from .constants import *
 
 
 #
@@ -113,13 +105,15 @@ def linear_blend(img1, img2, alpha=0.5):
 #
 
 
-def fetch_and_prepare_model(model_type, device):
-    if model_type == SUPPORTED_MODELS[0]:
-        model = Vgg16(requires_grad=False, show_progress=True).to(device)
-    elif model_type == SUPPORTED_MODELS[1]:
-        model = GoogLeNet(requires_grad=False, show_progress=True).to(device)
-    elif model_type == SUPPORTED_MODELS[2]:
-        model = ResNet50(requires_grad=False, show_progress=True).to(device)
+def fetch_and_prepare_model(model_type, pretrained_weights, device):
+    if model_type == SupportedModels.VGG16:
+        model = Vgg16(pretrained_weights, requires_grad=False, show_progress=True).to(device)
+    elif model_type == SupportedModels.GOOGLENET:
+        model = GoogLeNet(pretrained_weights, requires_grad=False, show_progress=True).to(device)
+    elif model_type == SupportedModels.RESNET50:
+        model = ResNet50(pretrained_weights, requires_grad=False, show_progress=True).to(device)
+    elif model_type == SupportedModels.ALEXNET:
+        model = AlexNet(pretrained_weights, requires_grad=False, show_progress=True).to(device)
     else:
         raise Exception('Not yet supported.')
     return model
@@ -127,13 +121,13 @@ def fetch_and_prepare_model(model_type, device):
 
 # todo: Add support for rotation and spiral transform
 def transform_frame(config, frame):
-    if config['frame_transform'] == SUPPORTED_TRANSFORMS[0]:
+    if config['frame_transform'] == SupportedTransforms.ZOOM:
         s = 0.05
         h, w = frame.shape[:2]
         frame = nd.affine_transform(frame, np.asarray([1 - s, 1 - s, 1]), [h * s / 2, w * s / 2, 0.0], order=1)
-    elif config['frame_transform'] == SUPPORTED_TRANSFORMS[1]:
+    elif config['frame_transform'] == SupportedTransforms.ROTATE:
         raise Exception('Not yet supported.')
-    elif config['frame_transform'] == SUPPORTED_TRANSFORMS[2]:
+    elif config['frame_transform'] == SupportedTransforms.SPIRAL:
         raise Exception('Not yet supported.')
     else:
         raise Exception('Not yet supported.')

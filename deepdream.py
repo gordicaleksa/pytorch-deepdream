@@ -6,15 +6,16 @@ import numpy as np
 import torch
 import cv2 as cv
 import shutil
-import matplotlib.pyplot as plt
 
 
 import utils.utils as utils
-from utils.utils import LOWER_IMAGE_BOUND, UPPER_IMAGE_BOUND, GaussianSmoothing, KERNEL_SIZE, SUPPORTED_TRANSFORMS, SUPPORTED_MODELS
+from utils.constants import *
 import utils.video_utils as video_utils
 
 
 # todo: experiment with different models (GoogLeNet, pytorch models trained on MIT Places?) can I use caffe models?
+# todo: add AlexNet pretrained on MIT Places
+# todo: add an easy way to change from ImageNet to MIT Places (and to change prep/post-processing
 # todo: add guide
 
 
@@ -33,7 +34,7 @@ def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
     grad = input_tensor.grad.data
 
     sigma = ((iteration + 1) / config['num_gradient_ascent_iterations']) * 2.0 + .5
-    smooth_grad = GaussianSmoothing(3, KERNEL_SIZE, sigma)(grad)
+    smooth_grad = utils.GaussianSmoothing(3, KERNEL_SIZE, sigma)(grad)
 
     g_norm = torch.std(smooth_grad)  # g_norm = torch.mean(torch.abs(smooth_grad))
     input_tensor.data += config['lr'] * (smooth_grad / g_norm)
@@ -45,7 +46,7 @@ def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
 def deep_dream_static_image(config, img):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # checking whether you have a GPU
 
-    model = utils.fetch_and_prepare_model(config['model'], device)
+    model = utils.fetch_and_prepare_model(config['model'], config['pretrained_weights'], device)
     layer_ids_to_use = [model.layer_names.index(layer_name) for layer_name in config['layer_to_use']]
 
     if img is None:  # in case the image wasn't specified load either image or start from noise
@@ -138,11 +139,12 @@ if __name__ == "__main__":
     parser.add_argument("--video_length", type=int, help="Number of video frames to produce", default=100)
     parser.add_argument("--input", type=str, help="Input image/video name that will be used for dreaming", default='figures.jpg')
     parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
-    parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
-    parser.add_argument("--model", type=str, choices=SUPPORTED_MODELS, help="Neural network (model) to use for dreaming", default=SUPPORTED_MODELS[0])
+    parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=1000)
+    parser.add_argument("--model", choices=SupportedModels, help="Neural network (model) to use for dreaming", default=SupportedModels.VGG16)
+    parser.add_argument("--pretrained_weights", choices=SupportedPretrainedWeights, help="Pretrained weights to use for the above model", default=SupportedPretrainedWeights.IMAGENET)
     parser.add_argument("--layer_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu4_3'])
-    parser.add_argument("--frame_transform", type=str, choices=SUPPORTED_TRANSFORMS,
-                        help="Transform used to transform the output frame and feed it back to the network input", default=SUPPORTED_TRANSFORMS[0])
+    parser.add_argument("--frame_transform", choices=SupportedTransforms,
+                        help="Transform used to transform the output frame and feed it back to the network input", default=SupportedTransforms.ZOOM)
 
     parser.add_argument("--pyramid_size", type=int, help="Number of images in an image pyramid", default=4)
     parser.add_argument("--pyramid_ratio", type=float, help="Ratio of image sizes in the pyramid", default=1.3)

@@ -3,12 +3,18 @@ import torch
 from torchvision import models
 
 
+from utils.constants import SupportedPretrainedWeights
+
+
 class GoogLeNet(torch.nn.Module):
     """Only those layers are exposed which have already proven to work nicely."""
-    def __init__(self, requires_grad=False, show_progress=False):
+    def __init__(self, pretrained_weights, requires_grad=False, show_progress=False):
         super().__init__()
-        # Keeping eval() mode only for consistency - it only affects BatchNorm and Dropout both of which we won't use
-        googlenet = models.googlenet(pretrained=True, progress=show_progress).eval()
+        if pretrained_weights == SupportedPretrainedWeights.IMAGENET:
+            googlenet = models.googlenet(pretrained=True, progress=show_progress).eval()
+        else:
+            raise Exception(f'Pretrained weights {pretrained_weights} not yet supported for {self.__class__.__name__} model.')
+
         self.layer_names = ['inception3b', 'inception4c', 'inception4d', 'inception4e']
 
         self.conv1 = googlenet.conv1

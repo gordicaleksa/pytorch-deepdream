@@ -5,21 +5,30 @@ import torch
 from torchvision import models
 
 
+from utils.constants import SupportedPretrainedWeights
+
+
 class ResNet50(torch.nn.Module):
     """Only those layers are exposed which have already proven to work nicely."""
 
-    def __init__(self, requires_grad=False, show_progress=False):
+    def __init__(self, pretrained_weights, requires_grad=False, show_progress=False):
         super().__init__()
-        state_dict = torch.load(os.path.join(os.path.dirname(__file__), 'resnet50_places365.pth.tar'))['state_dict']
+        if pretrained_weights == SupportedPretrainedWeights.IMAGENET:
+            resnet50 = models.resnet50(pretrained=True, progress=show_progress).eval()
+        elif pretrained_weights == SupportedPretrainedWeights.PLACES_365:
+            resnet50 = models.resnet50(pretrained=False, progress=show_progress).eval()
 
-        new_state_dict = {}  # modify key names and make it compatible with current PyTorch model naming scheme
-        for old_key in state_dict.keys():
-            new_key = old_key[7:]
-            new_state_dict[new_key] = state_dict[old_key]
+            state_dict = torch.load(os.path.join(os.path.dirname(__file__), 'resnet50_places365.pth.tar'))['state_dict']
 
-        resnet50 = models.resnet50(pretrained=True, progress=show_progress).eval()
-        resnet50.fc = torch.nn.Linear(resnet50.fc.in_features, 365)
-        resnet50.load_state_dict(new_state_dict, strict=True)
+            new_state_dict = {}  # modify key names and make it compatible with current PyTorch model naming scheme
+            for old_key in state_dict.keys():
+                new_key = old_key[7:]
+                new_state_dict[new_key] = state_dict[old_key]
+
+            resnet50.fc = torch.nn.Linear(resnet50.fc.in_features, 365)
+            resnet50.load_state_dict(new_state_dict, strict=True)
+        else:
+            raise Exception(f'Pretrained weights {pretrained_weights} not yet supported for {self.__class__.__name__} model.')
 
         # todo: pick out interesting layers
         self.layer_names = ['layer1', 'layer2', 'layer3', 'layer4']
