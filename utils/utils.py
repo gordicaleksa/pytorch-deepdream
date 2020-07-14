@@ -119,7 +119,7 @@ def fetch_and_prepare_model(model_type, pretrained_weights, device):
     return model
 
 
-# todo: Add support for rotation and spiral transform
+# todo: add support for rotation and spiral transform
 def transform_frame(config, frame):
     if config['frame_transform'] == SupportedTransforms.ZOOM:
         s = 0.05

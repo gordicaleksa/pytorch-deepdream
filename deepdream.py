@@ -14,8 +14,15 @@ import utils.video_utils as video_utils
 
 
 # todo: can I adapt original caffe models/weights to PyTorch?
-# todo: change prep/post-processing depending on ImageNet vs Places 365
 # todo: add guide
+
+# todo: [1] env
+# todo: [2] downloading places365 automatically
+# todo: [3] README
+# todo: [4] figure out which data to checkin
+
+# comment: Places 365 models are not giving good results
+# - preprocessing is the same as for ImageNet so that's out of the way
 
 
 # layer_activation.backward(layer) <- original implementation <=> with MSE / 2
