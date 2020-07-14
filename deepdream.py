@@ -13,9 +13,8 @@ from utils.constants import *
 import utils.video_utils as video_utils
 
 
-# todo: experiment with different models (GoogLeNet, pytorch models trained on MIT Places?) can I use caffe models?
-# todo: add AlexNet pretrained on MIT Places
-# todo: add an easy way to change from ImageNet to MIT Places (and to change prep/post-processing
+# todo: can I adapt original caffe models/weights to PyTorch?
+# todo: change prep/post-processing depending on ImageNet vs Places 365
 # todo: add guide
 
 
@@ -139,10 +138,10 @@ if __name__ == "__main__":
     parser.add_argument("--video_length", type=int, help="Number of video frames to produce", default=100)
     parser.add_argument("--input", type=str, help="Input image/video name that will be used for dreaming", default='figures.jpg')
     parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
-    parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=1000)
-    parser.add_argument("--model", choices=SupportedModels, help="Neural network (model) to use for dreaming", default=SupportedModels.VGG16)
-    parser.add_argument("--pretrained_weights", choices=SupportedPretrainedWeights, help="Pretrained weights to use for the above model", default=SupportedPretrainedWeights.IMAGENET)
-    parser.add_argument("--layer_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu4_3'])
+    parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
+    parser.add_argument("--model", choices=SupportedModels, help="Neural network (model) to use for dreaming", default=SupportedModels.ALEXNET)
+    parser.add_argument("--pretrained_weights", choices=SupportedPretrainedWeights, help="Pretrained weights to use for the above model", default=SupportedPretrainedWeights.PLACES_365)
+    parser.add_argument("--layer_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu2'])
     parser.add_argument("--frame_transform", choices=SupportedTransforms,
                         help="Transform used to transform the output frame and feed it back to the network input", default=SupportedTransforms.ZOOM)
 

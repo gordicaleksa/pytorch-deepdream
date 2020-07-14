@@ -1,3 +1,6 @@
+import os
+
+
 from collections import namedtuple
 import torch
 from torchvision import models
@@ -13,7 +16,17 @@ class AlexNet(torch.nn.Module):
         if pretrained_weights == SupportedPretrainedWeights.IMAGENET:
             alexnet = models.alexnet(pretrained=True, progress=show_progress).eval()
         else:
-            raise Exception(f'Pretrained weights {pretrained_weights} not yet supported for {self.__class__.__name__} model.')
+            alexnet = models.alexnet(pretrained=False, progress=show_progress).eval()
+
+            state_dict = torch.load(os.path.join(os.path.dirname(__file__), 'alexnet_places365.pth.tar'))['state_dict']
+
+            new_state_dict = {}  # modify key names and make it compatible with current PyTorch model naming scheme
+            for old_key in state_dict.keys():
+                new_key = old_key.replace('.module', '')
+                new_state_dict[new_key] = state_dict[old_key]
+
+            alexnet.classifier[-1] = torch.nn.Linear(alexnet.classifier[-1].in_features, 365)
+            alexnet.load_state_dict(new_state_dict, strict=True)
 
         alexnet_pretrained_features = alexnet.features
         self.layer_names = ['relu1', 'relu2', 'relu3', 'relu4', 'relu5']
