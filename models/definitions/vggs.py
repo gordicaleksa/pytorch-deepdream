@@ -8,6 +8,7 @@ from torchvision import models
 from utils.constants import SupportedPretrainedWeights
 
 
+# todo: try out some other layers
 class Vgg16(torch.nn.Module):
     """Only those layers are exposed which have already proven to work nicely."""
     def __init__(self, pretrained_weights, requires_grad=False, show_progress=False):
@@ -47,6 +48,8 @@ class Vgg16(torch.nn.Module):
         relu3_3 = x
         x = self.slice4(x)
         relu4_3 = x
+
+        # Feel free to experiment with different layers (you'll need to expose them).
         vgg_outputs = namedtuple("VggOutputs", self.layer_names)
         out = vgg_outputs(relu1_2, relu2_2, relu3_3, relu4_3)
         return out

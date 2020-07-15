@@ -14,40 +14,43 @@ import utils.video_utils as video_utils
 
 
 # todo: can I adapt original caffe models/weights to PyTorch?
-# todo: add guide
+# todo: add guided dreaming
 
-# todo: [1] README
+# todo: [0] try different VGG layers
+# todo: [1] create README
 # todo: [2] figure out which data to checkin
-# todo: [3] Refactor
-
-# comment: Places 365 models are not giving good results
-# - preprocessing is the same as for ImageNet, so that's out of the way
+# todo: [3] Refactor playground
+# todo: [4] explain every step of Cascade Gaussian
 
 
-# layer_activation.backward(layer) <- original implementation <=> with MSE / 2
+# layer_activation.backward(layer) <- original implementation did it like this it's equivalent to MSE(reduction='sum')/2
 def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
     out = model(input_tensor)
+    # step1: Grab activations/feature maps of interest
     activations = [out[layer_id_to_use] for layer_id_to_use in layer_ids_to_use]
+
+    # step2: Calculate loss over activations
     losses = []
     for layer_activation in activations:
-        loss_component = torch.nn.MSELoss(reduction='mean')(layer_activation, torch.zeros_like(layer_activation)) # torch.norm(torch.flatten(layer_activation), p=2)
+        # torch.norm(torch.flatten(layer_activation), p=2) for p=2 => L2 loss; for p=1 => L1 loss. MSE works really good
+        loss_component = torch.nn.MSELoss(reduction='mean')(layer_activation, torch.zeros_like(layer_activation))
         losses.append(loss_component)
 
     loss = torch.mean(torch.stack(losses))
     loss.backward()
 
-    # Process image gradients
+    # step3: Process image gradients (smoothing + normalization)
     grad = input_tensor.grad.data
 
-    sigma = ((iteration + 1) / config['num_gradient_ascent_iterations']) * 2.0 + .5
-    smooth_grad = utils.GaussianSmoothing(3, KERNEL_SIZE, sigma)(grad)
+    sigma = ((iteration + 1) / config['num_gradient_ascent_iterations']) * 2.0 + config['smoothing_coefficient']
+    smooth_grad = utils.CascadeGaussianSmoothing(KERNEL_SIZE, sigma)(grad)  # applies 3 Gaussian kernels
 
-    g_norm = torch.std(smooth_grad)  # g_norm = torch.mean(torch.abs(smooth_grad))
+    g_norm = torch.std(smooth_grad)  # g_norm = torch.mean(torch.abs(smooth_grad)) <- other option std works better
 
-    # Update image using the calculated gradients
+    # step4: Update image using the calculated gradients (gradient ascent step)
     input_tensor.data += config['lr'] * (smooth_grad / g_norm)
 
-    # Clear gradients and clamp the data (otherwise it would explode to +- Inf)
+    # step5: Clear gradients and clamp the data (otherwise values would explode to +- "infinity")
     input_tensor.grad.data.zero_()
     input_tensor.data = torch.max(torch.min(input_tensor, UPPER_IMAGE_BOUND), LOWER_IMAGE_BOUND)
 
@@ -58,12 +61,12 @@ def deep_dream_static_image(config, img):
     model = utils.fetch_and_prepare_model(config['model'], config['pretrained_weights'], device)
     try:
         layer_ids_to_use = [model.layer_names.index(layer_name) for layer_name in config['layers_to_use']]
-    except Exception as e:
+    except Exception as e:  # making sure you set the correct layer name for this specific model
         print('Invalid layer name!')
         print(f'Available layers for model {config["model"].name} are {model.layer_names}.')
         exit(0)
 
-    if img is None:  # in case the image wasn't specified load either image or start from noise
+    if img is None:  # load either image or start from pure noise image
         img_path = os.path.join(config['inputs_path'], config['input'])
         img = utils.load_image(img_path, target_shape=config['img_width'])  # load numpy, [0, 1], channel-last, RGB image
         if config['use_noise']:
@@ -73,8 +76,8 @@ def deep_dream_static_image(config, img):
     img = utils.preprocess_numpy_img(img)
     base_shape = img.shape[:-1]  # save initial height and width
 
-    # Note: simple rescaling the whole result and not only details (see original implementation) gave me better results
-    # going from smaller to bigger resolution
+    # Note: simply rescaling the whole result (and not only details, see original implementation) gave me better results
+    # Going from smaller to bigger resolution (from pyramid top to bottom)
     for pyramid_level in range(config['pyramid_size']):
         new_shape = utils.get_new_shape(config, base_shape, pyramid_level)
         img = cv.resize(img, (new_shape[1], new_shape[0]))
@@ -84,7 +87,7 @@ def deep_dream_static_image(config, img):
             h_shift, w_shift = np.random.randint(-config['spatial_shift_size'], config['spatial_shift_size'] + 1, 2)
             input_tensor = utils.random_circular_spatial_shift(input_tensor, h_shift, w_shift)
 
-            gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration)  # gradient_ascent_adam(model, input_tensor)
+            gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration)
 
             input_tensor = utils.random_circular_spatial_shift(input_tensor, h_shift, w_shift, should_undo=True)
 
@@ -93,6 +96,7 @@ def deep_dream_static_image(config, img):
     return utils.post_process_numpy_image(img)
 
 
+# Feed the output dreamed image back to the input and repeat
 def deep_dream_video_ouroboros(config):
     img_path = os.path.join(config['inputs_path'], config['input'])
     # load numpy, [0, 1], channel-last, RGB image, None will cause it to start from the uniform noise [0, 1] image
@@ -111,7 +115,7 @@ def deep_dream_video_ouroboros(config):
 def deep_dream_video(config):
     video_path = os.path.join(config['inputs_path'], config['input'])
     tmp_input_dir = os.path.join(config['out_videos_path'], 'tmp_input')
-    tmp_output_dir = os.path.join(config['out_videos_path'], 'tmp_out4')
+    tmp_output_dir = os.path.join(config['out_videos_path'], 'tmp_out')
     config['dump_dir'] = tmp_output_dir
     os.makedirs(tmp_input_dir, exist_ok=True)
     os.makedirs(tmp_output_dir, exist_ok=True)
@@ -124,6 +128,7 @@ def deep_dream_video(config):
         frame_path = os.path.join(tmp_input_dir, frame_name)
         frame = utils.load_image(frame_path, target_shape=config['img_width'])
         if config['blend'] is not None and last_img is not None:
+            # 1.0 - get only the current frame, 0.5 - combine with last dreamed frame and stabilize the video
             frame = utils.linear_blend(last_img, frame, config['blend'])
 
         dreamed_frame = deep_dream_static_image(config, frame)
@@ -133,7 +138,6 @@ def deep_dream_video(config):
     video_utils.create_video_from_intermediate_results(config, metadata)
 
     shutil.rmtree(tmp_input_dir)  # remove tmp files
-    # shutil.rmtree(tmp_output_dir)  # remove tmp files
     print(f'Deleted tmp frame dump directory {tmp_input_dir}.')
 
 
@@ -149,27 +153,29 @@ if __name__ == "__main__":
     # Modifiable args - feel free to play with these (only a small subset is exposed by design to avoid cluttering)
     #
     parser = argparse.ArgumentParser()
-    # todo: split these into semantic groups
-    parser.add_argument("--is_video", type=bool, help="Create DeepDream video - default is DeepDream image", default=True)
-    parser.add_argument("--video_length", type=int, help="Number of video frames to produce", default=100)
-    parser.add_argument("--input", type=str, help="Input image/video name that will be used for dreaming", default='figures.jpg')
+    parser.add_argument("--is_video", type=bool, help="Create DeepDream video - default is DeepDream static image", default=False)
+    parser.add_argument("--video_length", type=int, help="Number of video frames to produce for ouroboros", default=100)
+    parser.add_argument("--blend", type=float, help="Blend coefficient for video creation", default=0.85)
+
+    parser.add_argument("--input", type=str, help="Input image/video name that will be used for dreaming", default='cloud.jpg')
     parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
     parser.add_argument("--model", choices=SupportedModels, help="Neural network (model) to use for dreaming", default=SupportedModels.VGG16)
     parser.add_argument("--pretrained_weights", choices=SupportedPretrainedWeights, help="Pretrained weights to use for the above model", default=SupportedPretrainedWeights.IMAGENET)
-    parser.add_argument("--layers_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu3_3'])
-    parser.add_argument("--frame_transform", choices=SupportedTransforms,
-                        help="Transform used to transform the output frame and feed it back to the network input", default=SupportedTransforms.ZOOM)
+    parser.add_argument("--layers_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu4_3'])
 
-    parser.add_argument("--pyramid_size", type=int, help="Number of images in an image pyramid", default=4)
+    # Main params for experimentation
+    parser.add_argument("--pyramid_size", type=int, help="Number of images in an image pyramid", default=6)
     parser.add_argument("--pyramid_ratio", type=float, help="Ratio of image sizes in the pyramid", default=1.4)
     parser.add_argument("--num_gradient_ascent_iterations", type=int, help="Number of gradient ascent iterations", default=10)
     parser.add_argument("--lr", type=float, help="Learning rate i.e. step size in gradient ascent", default=0.09)
-    parser.add_argument("--spatial_shift_size", type=int, help='Number of pixels to randomly shift image before grad ascent', default=5)
 
-    parser.add_argument("--blend", type=float, help="Blend coefficient for video creation", default=0.85)
-
-    parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
+    # You usually won't change these as often
     parser.add_argument("--should_display", type=bool, help="Display intermediate dreaming results", default=False)
+    parser.add_argument("--frame_transform", choices=SupportedTransforms,
+                        help="Transform used to transform the output frame and feed it back to the network input", default=SupportedTransforms.ZOOM)
+    parser.add_argument("--spatial_shift_size", type=int, help='Number of pixels to randomly shift image before grad ascent', default=32)
+    parser.add_argument("--smoothing_coefficient", type=float, help='Directly controls standard deviation for gradient smoothing', default=0.5)
+    parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
     args = parser.parse_args()
 
     # Wrapping configuration into a dictionary - keeping things clean
@@ -182,11 +188,11 @@ if __name__ == "__main__":
     config['dump_dir'] = config['out_videos_path'] if config['is_video'] else config['out_images_path']
 
     # DeepDream algorithm in 3 flavours: static image, video and ouroboros (feeding net output to it's input)
-    if config['input'].endswith('.mp4'):  # only support mp4 atm
+    if any([config['input'].endswith(video_ext) for video_ext in SUPPORTED_VIDEO_FORMATS]):  # only support mp4 atm
         deep_dream_video(config)
     elif config['is_video']:
         deep_dream_video_ouroboros(config)
     else:
-        img = deep_dream_static_image(config, img=None)  # img will be loaded inside of deep_dream_static_image
-        utils.save_and_maybe_display_image(config, img, should_display=False)
+        img = deep_dream_static_image(config, img=None)  # img=None -> will be loaded inside of deep_dream_static_image
+        utils.save_and_maybe_display_image(config, img, should_display=config['should_display'])
 

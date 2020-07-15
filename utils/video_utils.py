@@ -8,6 +8,7 @@ import cv2 as cv
 import imageio
 
 
+# Return frame names that follow the 6 digit pattern and have .jpg extension
 def valid_frames(input_dir):
     def valid_frame_name(str):
         pattern = re.compile(r'[0-9]{6}\.jpg')  # regex, examples it covers: 000000.jpg or 923492.jpg, etc.
@@ -26,6 +27,7 @@ def create_video_name(config):
     infix = f'{input_name}_width_{str(config["img_width"])}_model_{model_name}_{blend_info}'
 
     suffix = '.mp4'
+
     video_name = prefix + infix + suffix
     return video_name
 

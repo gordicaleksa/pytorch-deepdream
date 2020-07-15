@@ -94,6 +94,7 @@ class GoogLeNet(torch.nn.Module):
         x = self.inception4e(x)
         inception4e = x
 
+        # Feel free to experiment with different layers.
         net_outputs = namedtuple("GoogLeNetOutputs", self.layer_names)
         out = net_outputs(inception3b, inception4c, inception4d, inception4e)
         return out

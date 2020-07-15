@@ -148,6 +148,7 @@ class ResNet50(torch.nn.Module):
         x = self.relu(x)
         layer429 = x
 
+        # Feel free to experiment with different layers.
         net_outputs = namedtuple("ResNet50Outputs", self.layer_names)
         out = net_outputs(layer10, layer20, layer30, layer425)
         return out

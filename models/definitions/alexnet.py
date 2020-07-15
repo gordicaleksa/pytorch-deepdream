@@ -76,6 +76,7 @@ class AlexNet(torch.nn.Module):
         relu4 = x
         x = self.slice5(x)
         relu5 = x
+
         alexnet_outputs = namedtuple("AlexNetOutputs", self.layer_names)
         out = alexnet_outputs(relu1, relu2, relu3, relu4, relu5)
         return out
