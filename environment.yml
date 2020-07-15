@@ -1,0 +1,15 @@
+name: pytorch-deepdream
+channels:
+  - defaults
+  - pytorch
+dependencies:
+  - python==3.8.3
+  - pip==20.0.2
+  - matplotlib==3.1.3
+  - pytorch==1.5.0
+  - torchvision==0.6.0
+  - pip:
+    - numpy==1.18.4
+    - scipy==1.5.1
+    - opencv-python==4.2.0.32
+

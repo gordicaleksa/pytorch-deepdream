@@ -1,11 +1,8 @@
 import os
 import math
 import numbers
-import enum
-
 
 import cv2 as cv
-import numpy as np
 from torchvision import transforms
 import matplotlib.pyplot as plt
 import torch
@@ -14,10 +11,10 @@ from torch import nn
 import scipy.ndimage as nd
 
 
-from models.vggs import Vgg16
-from models.googlenet import GoogLeNet
-from models.resnets import ResNet50
-from models.alexnet import AlexNet
+from models.definitions.vggs import Vgg16
+from models.definitions.googlenet import GoogLeNet
+from models.definitions.resnets import ResNet50
+from models.definitions.alexnet import AlexNet
 
 
 from .constants import *

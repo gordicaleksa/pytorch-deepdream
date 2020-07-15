@@ -11,7 +11,7 @@ import cv2 as cv
 
 import utils.utils as utils
 from deepdream import gradient_ascent
-from models.vggs import Vgg16
+from models.definitions.vggs import Vgg16
 
 
 # rotation:
@@ -134,4 +134,4 @@ def visualize_optical_flow():
 
 
 if __name__ == "__main__":
-    print('dummy')
+    understand_blend()

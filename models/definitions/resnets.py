@@ -4,6 +4,7 @@ from collections import namedtuple
 
 import torch
 from torchvision import models
+from torch.hub import download_url_to_file
 
 
 from utils.constants import SupportedPretrainedWeights
@@ -19,7 +20,19 @@ class ResNet50(torch.nn.Module):
         elif pretrained_weights == SupportedPretrainedWeights.PLACES_365:
             resnet50 = models.resnet50(pretrained=False, progress=show_progress).eval()
 
-            state_dict = torch.load(os.path.join(os.path.dirname(__file__), 'resnet50_places365.pth.tar'))['state_dict']
+            binaries_dir_path = os.path.join(os.path.dirname(__file__), os.pardir, 'binaries')
+            os.makedirs(binaries_dir_path, exist_ok=True)
+            binary_name = 'resnet50_places365.pth.tar'
+            resnet50_places365_binary_path = os.path.join(binaries_dir_path, binary_name)
+
+            if os.path.exists(resnet50_places365_binary_path):
+                state_dict = torch.load(resnet50_places365_binary_path)['state_dict']
+            else:
+                binary_url = r'http://places2.csail.mit.edu/models_places365/resnet50_places365.pth.tar'
+                print(f'Downloading {binary_name} from {binary_url} it may take some time.')
+                download_url_to_file(binary_url, resnet50_places365_binary_path)
+                print('Done downloading.')
+                state_dict = torch.load(resnet50_places365_binary_path)['state_dict']
 
             new_state_dict = {}  # modify key names and make it compatible with current PyTorch model naming scheme
             for old_key in state_dict.keys():

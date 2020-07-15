@@ -1,11 +1,11 @@
 import os
 import argparse
+import shutil
 
 
 import numpy as np
 import torch
 import cv2 as cv
-import shutil
 
 
 import utils.utils as utils
@@ -16,13 +16,11 @@ import utils.video_utils as video_utils
 # todo: can I adapt original caffe models/weights to PyTorch?
 # todo: add guide
 
-# todo: [1] env
-# todo: [2] downloading places365 automatically
 # todo: [3] README
 # todo: [4] figure out which data to checkin
 
 # comment: Places 365 models are not giving good results
-# - preprocessing is the same as for ImageNet so that's out of the way
+# - preprocessing is the same as for ImageNet, so that's out of the way
 
 
 # layer_activation.backward(layer) <- original implementation <=> with MSE / 2
@@ -146,9 +144,9 @@ if __name__ == "__main__":
     parser.add_argument("--input", type=str, help="Input image/video name that will be used for dreaming", default='figures.jpg')
     parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
     parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
-    parser.add_argument("--model", choices=SupportedModels, help="Neural network (model) to use for dreaming", default=SupportedModels.ALEXNET)
+    parser.add_argument("--model", choices=SupportedModels, help="Neural network (model) to use for dreaming", default=SupportedModels.RESNET50)
     parser.add_argument("--pretrained_weights", choices=SupportedPretrainedWeights, help="Pretrained weights to use for the above model", default=SupportedPretrainedWeights.PLACES_365)
-    parser.add_argument("--layer_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu2'])
+    parser.add_argument("--layer_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['layer3'])
     parser.add_argument("--frame_transform", choices=SupportedTransforms,
                         help="Transform used to transform the output frame and feed it back to the network input", default=SupportedTransforms.ZOOM)
 
