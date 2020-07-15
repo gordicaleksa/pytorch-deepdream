@@ -12,4 +12,5 @@ dependencies:
     - numpy==1.18.4
     - scipy==1.5.1
     - opencv-python==4.2.0.32
+    - imageio==2.9.0
 

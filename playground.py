@@ -10,6 +10,7 @@ import cv2 as cv
 
 
 import utils.utils as utils
+import utils.video_utils as video_utils
 from deepdream import gradient_ascent
 from models.definitions.vggs import Vgg16
 
@@ -134,4 +135,7 @@ def visualize_optical_flow():
 
 
 if __name__ == "__main__":
-    understand_blend()
+    # understand_blend()
+    frames_dir = r'C:\tmp_data_dir\YouTube\CodingProjects\DeepDream\data\out-videos\tmp'
+    out_path = r'C:\tmp_data_dir\YouTube\CodingProjects\DeepDream\data\out-videos\tmp\first.gif'
+    video_utils.create_gif(frames_dir, out_path)

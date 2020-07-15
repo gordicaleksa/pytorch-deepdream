@@ -5,6 +5,7 @@ import re
 
 
 import cv2 as cv
+import imageio
 
 
 def valid_frames(input_dir):
@@ -69,3 +70,11 @@ def dump_frames(video_path, dump_dir):
     else:
         raise Exception(f'{ffmpeg} not found in the system path, aborting.')
 
+
+def create_gif(frames_dir, out_path):
+    assert os.path.splitext(out_path)[1].lower() == '.gif', f'Expected gif got {os.path.splitext(out_path)[1]}.'
+
+    frame_paths = [os.path.join(frames_dir, frame_name) for frame_name in os.listdir(frames_dir)]
+    images = [imageio.imread(frame_path) for frame_path in frame_paths]
+    imageio.mimwrite(out_path, images, fps=5)
+    print(f'Saved gif to {out_path}.')
