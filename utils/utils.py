@@ -75,13 +75,21 @@ def pytorch_output_adapter(img):
     return np.moveaxis(img.to('cpu').detach().numpy()[0], 0, 2)
 
 
+def build_image_name(config):
+    input_name = os.path.basename(config['input']).split('.')[0]
+    layers = '_'.join(config['layers_to_use'])
+    # Looks awful but makes the creation process transparent for other creators
+    img_name = f'{input_name}_width_{config["img_width"]}_model_{config["model"].name}_{config["pretrained_weights"].name}_{layers}_pyrsize_{config["pyramid_size"]}_pyrratio_{config["pyramid_ratio"]}_iter_{config["num_gradient_ascent_iterations"]}_lr_{config["lr"]}_shift_{config["spatial_shift_size"]}.jpg'
+    return img_name
+
+
 def save_and_maybe_display_image(config, dump_img, should_display=True, name_modifier=None):
     assert isinstance(dump_img, np.ndarray), f'Expected numpy array got {type(dump_img)}.'
 
     if name_modifier is not None:
         dump_img_name = str(name_modifier).zfill(6) + '.jpg'
     else:
-        dump_img_name = config['input'].split('.')[0] + '_width_' + str(config['img_width']) + '_model_' + config['model'].split('.')[0] + '.jpg'
+        dump_img_name = build_image_name(config)
 
     if dump_img.dtype != np.uint8:
         dump_img = (dump_img*255).astype(np.uint8)

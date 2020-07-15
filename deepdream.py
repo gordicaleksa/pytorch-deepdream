@@ -16,8 +16,9 @@ import utils.video_utils as video_utils
 # todo: can I adapt original caffe models/weights to PyTorch?
 # todo: add guide
 
-# todo: [3] README
-# todo: [4] figure out which data to checkin
+# todo: [1] README
+# todo: [2] figure out which data to checkin
+# todo: [3] Refactor
 
 # comment: Places 365 models are not giving good results
 # - preprocessing is the same as for ImageNet, so that's out of the way
@@ -35,15 +36,19 @@ def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
     loss = torch.mean(torch.stack(losses))
     loss.backward()
 
+    # Process image gradients
     grad = input_tensor.grad.data
 
     sigma = ((iteration + 1) / config['num_gradient_ascent_iterations']) * 2.0 + .5
     smooth_grad = utils.GaussianSmoothing(3, KERNEL_SIZE, sigma)(grad)
 
     g_norm = torch.std(smooth_grad)  # g_norm = torch.mean(torch.abs(smooth_grad))
-    input_tensor.data += config['lr'] * (smooth_grad / g_norm)
-    input_tensor.grad.data.zero_()
 
+    # Update image using the calculated gradients
+    input_tensor.data += config['lr'] * (smooth_grad / g_norm)
+
+    # Clear gradients and clamp the data (otherwise it would explode to +- Inf)
+    input_tensor.grad.data.zero_()
     input_tensor.data = torch.max(torch.min(input_tensor, UPPER_IMAGE_BOUND), LOWER_IMAGE_BOUND)
 
 
@@ -51,7 +56,7 @@ def deep_dream_static_image(config, img):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # checking whether you have a GPU
 
     model = utils.fetch_and_prepare_model(config['model'], config['pretrained_weights'], device)
-    layer_ids_to_use = [model.layer_names.index(layer_name) for layer_name in config['layer_to_use']]
+    layer_ids_to_use = [model.layer_names.index(layer_name) for layer_name in config['layers_to_use']]
 
     if img is None:  # in case the image wasn't specified load either image or start from noise
         img_path = os.path.join(config['inputs_path'], config['input'])
@@ -131,7 +136,7 @@ if __name__ == "__main__":
     #
     # Fixed args - don't change these unless you have a good reason
     #
-    inputs_path = os.path.join(os.path.dirname(__file__), 'data', 'input-images')
+    inputs_path = os.path.join(os.path.dirname(__file__), 'data', 'input')
     out_images_path = os.path.join(os.path.dirname(__file__), 'data', 'out-images')
     out_videos_path = os.path.join(os.path.dirname(__file__), 'data', 'out-videos')
 
@@ -139,14 +144,14 @@ if __name__ == "__main__":
     # Modifiable args - feel free to play with these (only a small subset is exposed by design to avoid cluttering)
     #
     parser = argparse.ArgumentParser()
-    parser.add_argument("--is_video", type=bool, help="Create DeepDream video - default is DeepDream image", default=True)
+    parser.add_argument("--is_video", type=bool, help="Create DeepDream video - default is DeepDream image", default=False)
     parser.add_argument("--video_length", type=int, help="Number of video frames to produce", default=100)
     parser.add_argument("--input", type=str, help="Input image/video name that will be used for dreaming", default='figures.jpg')
     parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
     parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
-    parser.add_argument("--model", choices=SupportedModels, help="Neural network (model) to use for dreaming", default=SupportedModels.RESNET50)
-    parser.add_argument("--pretrained_weights", choices=SupportedPretrainedWeights, help="Pretrained weights to use for the above model", default=SupportedPretrainedWeights.PLACES_365)
-    parser.add_argument("--layer_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['layer3'])
+    parser.add_argument("--model", choices=SupportedModels, help="Neural network (model) to use for dreaming", default=SupportedModels.VGG16)
+    parser.add_argument("--pretrained_weights", choices=SupportedPretrainedWeights, help="Pretrained weights to use for the above model", default=SupportedPretrainedWeights.IMAGENET)
+    parser.add_argument("--layers_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu4_3'])
     parser.add_argument("--frame_transform", choices=SupportedTransforms,
                         help="Transform used to transform the output frame and feed it back to the network input", default=SupportedTransforms.ZOOM)
 
@@ -176,6 +181,6 @@ if __name__ == "__main__":
     elif config['is_video']:
         deep_dream_video_ouroboros(config)
     else:
-        deep_dream_static_image(config, img=None)  # img will be loaded inside of deep_dream_static_image
-
+        img = deep_dream_static_image(config, img=None)  # img will be loaded inside of deep_dream_static_image
+        utils.save_and_maybe_display_image(config, img, should_display=False)
 
