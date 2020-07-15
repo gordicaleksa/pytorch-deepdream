@@ -56,7 +56,12 @@ def deep_dream_static_image(config, img):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # checking whether you have a GPU
 
     model = utils.fetch_and_prepare_model(config['model'], config['pretrained_weights'], device)
-    layer_ids_to_use = [model.layer_names.index(layer_name) for layer_name in config['layers_to_use']]
+    try:
+        layer_ids_to_use = [model.layer_names.index(layer_name) for layer_name in config['layers_to_use']]
+    except Exception as e:
+        print('Invalid layer name!')
+        print(f'Available layers for model {config["model"].name} are {model.layer_names}.')
+        exit(0)
 
     if img is None:  # in case the image wasn't specified load either image or start from noise
         img_path = os.path.join(config['inputs_path'], config['input'])
@@ -144,25 +149,26 @@ if __name__ == "__main__":
     # Modifiable args - feel free to play with these (only a small subset is exposed by design to avoid cluttering)
     #
     parser = argparse.ArgumentParser()
-    parser.add_argument("--is_video", type=bool, help="Create DeepDream video - default is DeepDream image", default=False)
+    # todo: split these into semantic groups
+    parser.add_argument("--is_video", type=bool, help="Create DeepDream video - default is DeepDream image", default=True)
     parser.add_argument("--video_length", type=int, help="Number of video frames to produce", default=100)
     parser.add_argument("--input", type=str, help="Input image/video name that will be used for dreaming", default='figures.jpg')
-    parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
     parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
     parser.add_argument("--model", choices=SupportedModels, help="Neural network (model) to use for dreaming", default=SupportedModels.VGG16)
     parser.add_argument("--pretrained_weights", choices=SupportedPretrainedWeights, help="Pretrained weights to use for the above model", default=SupportedPretrainedWeights.IMAGENET)
-    parser.add_argument("--layers_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu4_3'])
+    parser.add_argument("--layers_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu3_3'])
     parser.add_argument("--frame_transform", choices=SupportedTransforms,
                         help="Transform used to transform the output frame and feed it back to the network input", default=SupportedTransforms.ZOOM)
 
     parser.add_argument("--pyramid_size", type=int, help="Number of images in an image pyramid", default=4)
-    parser.add_argument("--pyramid_ratio", type=float, help="Ratio of image sizes in the pyramid", default=1.3)
+    parser.add_argument("--pyramid_ratio", type=float, help="Ratio of image sizes in the pyramid", default=1.4)
     parser.add_argument("--num_gradient_ascent_iterations", type=int, help="Number of gradient ascent iterations", default=10)
     parser.add_argument("--lr", type=float, help="Learning rate i.e. step size in gradient ascent", default=0.09)
-    parser.add_argument("--spatial_shift_size", type=int, help='Number of pixels to randomly shift image before grad ascent', default=32)
+    parser.add_argument("--spatial_shift_size", type=int, help='Number of pixels to randomly shift image before grad ascent', default=5)
 
     parser.add_argument("--blend", type=float, help="Blend coefficient for video creation", default=0.85)
 
+    parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
     parser.add_argument("--should_display", type=bool, help="Display intermediate dreaming results", default=False)
     args = parser.parse_args()
 

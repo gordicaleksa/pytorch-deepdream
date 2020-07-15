@@ -44,36 +44,110 @@ class ResNet50(torch.nn.Module):
         else:
             raise Exception(f'Pretrained weights {pretrained_weights} not yet supported for {self.__class__.__name__} model.')
 
-        # todo: pick out interesting layers
         self.layer_names = ['layer1', 'layer2', 'layer3', 'layer4']
 
         self.conv1 = resnet50.conv1
         self.bn1 = resnet50.bn1
         self.relu = resnet50.relu
         self.maxpool = resnet50.maxpool
-        self.layer1 = resnet50.layer1
-        self.layer2 = resnet50.layer2
-        self.layer3 = resnet50.layer3
-        self.layer4 = resnet50.layer4
+
+        # 3
+        self.layer10 = resnet50.layer1[0]
+        self.layer11 = resnet50.layer1[1]
+        self.layer12 = resnet50.layer1[2]
+
+        # 4
+        self.layer20 = resnet50.layer2[0]
+        self.layer21 = resnet50.layer2[1]
+        self.layer22 = resnet50.layer2[2]
+        self.layer23 = resnet50.layer2[3]
+
+        # 6
+        self.layer30 = resnet50.layer3[0]
+        self.layer31 = resnet50.layer3[1]
+        self.layer32 = resnet50.layer3[2]
+        self.layer33 = resnet50.layer3[3]
+        self.layer34 = resnet50.layer3[4]
+        self.layer35 = resnet50.layer3[5]
+
+        # 3
+        self.layer40 = resnet50.layer4[0]
+        self.layer41 = resnet50.layer4[1]
+        # self.layer42 = resnet50.layer4[2]
+
+        # Go even deeper into ResNet's BottleNeck module for layer 42
+        self.layer42_conv1 = resnet50.layer4[2].conv1
+        self.layer42_bn1 = resnet50.layer4[2].bn1
+        self.layer42_conv2 = resnet50.layer4[2].conv2
+        self.layer42_bn2 = resnet50.layer4[2].bn2
+        self.layer42_conv3 = resnet50.layer4[2].conv3
+        self.layer42_bn3 = resnet50.layer4[2].bn3
+        self.layer42_relu = resnet50.layer4[2].relu
 
         # Set these to False so that PyTorch won't be including them in it's autograd engine - eating up precious memory
         if not requires_grad:
             for param in self.parameters():
                 param.requires_grad = False
 
+    # Feel free to experiment with different layers
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
-        x = self.layer1(x)
-        layer1 = x
-        x = self.layer2(x)
-        layer2 = x
-        x = self.layer3(x)
-        layer3 = x
-        x = self.layer4(x)
-        layer4 = x
+        x = self.layer10(x)
+        layer10 = x
+        x = self.layer11(x)
+        layer11 = x
+        x = self.layer12(x)
+        layer12 = x
+        x = self.layer20(x)
+        layer20 = x
+        x = self.layer21(x)
+        layer21 = x
+        x = self.layer22(x)
+        layer22 = x
+        x = self.layer23(x)
+        layer23 = x
+        x = self.layer30(x)
+        layer30 = x
+        x = self.layer31(x)
+        layer31 = x
+        x = self.layer32(x)
+        layer32 = x
+        x = self.layer33(x)
+        layer33 = x
+        x = self.layer34(x)
+        layer34 = x
+        x = self.layer35(x)
+        layer35 = x
+        x = self.layer40(x)
+        layer40 = x
+        x = self.layer41(x)
+        layer41 = x
+
+        layer42_identity = layer41
+        x = self.layer42_conv1(x)
+        layer420 = x
+        x = self.layer42_bn1(x)
+        layer421 = x
+        x = self.layer42_relu(x)
+        layer422 = x
+        x = self.layer42_conv2(x)
+        layer423 = x
+        x = self.layer42_bn2(x)
+        layer424 = x
+        x = self.layer42_relu(x)
+        layer425 = x
+        x = self.layer42_conv3(x)
+        layer426 = x
+        x = self.layer42_bn3(x)
+        layer427 = x
+        x += layer42_identity
+        layer428 = x
+        x = self.relu(x)
+        layer429 = x
+
         net_outputs = namedtuple("ResNet50Outputs", self.layer_names)
-        out = net_outputs(layer1, layer2, layer3, layer4)
+        out = net_outputs(layer10, layer20, layer30, layer425)
         return out

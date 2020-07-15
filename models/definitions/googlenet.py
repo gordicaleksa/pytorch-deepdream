@@ -24,9 +24,11 @@ class GoogLeNet(torch.nn.Module):
         self.conv2 = googlenet.conv2
         self.conv3 = googlenet.conv3
         self.maxpool2 = googlenet.maxpool2
+
         self.inception3a = googlenet.inception3a
         self.inception3b = googlenet.inception3b
         self.maxpool3 = googlenet.maxpool3
+
         self.inception4a = googlenet.inception4a
         self.inception4b = googlenet.inception4b
         self.inception4c = googlenet.inception4c
@@ -52,25 +54,36 @@ class GoogLeNet(torch.nn.Module):
         x = self.transform_input(x)
         # N x 3 x 224 x 224
         x = self.conv1(x)
+        conv1 = x
         # N x 64 x 112 x 112
         x = self.maxpool1(x)
+        mp1 = x
         # N x 64 x 56 x 56
         x = self.conv2(x)
+        conv2 = x
         # N x 64 x 56 x 56
         x = self.conv3(x)
+        conv3 = x
         # N x 192 x 56 x 56
         x = self.maxpool2(x)
+        mp2 = x
+
         # N x 192 x 28 x 28
         x = self.inception3a(x)
+        inception3a = x
         # N x 256 x 28 x 28
         x = self.inception3b(x)
         inception3b = x
         # N x 480 x 28 x 28
         x = self.maxpool3(x)
+        mp3 = x
+
         # N x 480 x 14 x 14
         x = self.inception4a(x)
+        inception4a = x
         # N x 512 x 14 x 14
         x = self.inception4b(x)
+        inception4b = x
         # N x 512 x 14 x 14
         x = self.inception4c(x)
         inception4c = x

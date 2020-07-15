@@ -76,7 +76,7 @@ def pytorch_output_adapter(img):
 
 
 def build_image_name(config):
-    input_name = os.path.basename(config['input']).split('.')[0]
+    input_name = os.path.basename(config['input']).split('.')[0] if config['use_noise'] is False else 'rand_noise'
     layers = '_'.join(config['layers_to_use'])
     # Looks awful but makes the creation process transparent for other creators
     img_name = f'{input_name}_width_{config["img_width"]}_model_{config["model"].name}_{config["pretrained_weights"].name}_{layers}_pyrsize_{config["pyramid_size"]}_pyrratio_{config["pyramid_ratio"]}_iter_{config["num_gradient_ascent_iterations"]}_lr_{config["lr"]}_shift_{config["spatial_shift_size"]}.jpg'
@@ -86,6 +86,10 @@ def build_image_name(config):
 def save_and_maybe_display_image(config, dump_img, should_display=True, name_modifier=None):
     assert isinstance(dump_img, np.ndarray), f'Expected numpy array got {type(dump_img)}.'
 
+    dump_dir = config['dump_dir']
+    dump_dir = os.path.join(dump_dir, f'{config["model"].name}_{config["pretrained_weights"].name}')
+    os.makedirs(dump_dir, exist_ok=True)
+
     if name_modifier is not None:
         dump_img_name = str(name_modifier).zfill(6) + '.jpg'
     else:
@@ -94,7 +98,7 @@ def save_and_maybe_display_image(config, dump_img, should_display=True, name_mod
     if dump_img.dtype != np.uint8:
         dump_img = (dump_img*255).astype(np.uint8)
 
-    cv.imwrite(os.path.join(config['dump_dir'], dump_img_name), dump_img[:, :, ::-1])  # ::-1 because opencv expects BGR (and not RGB) format...
+    cv.imwrite(os.path.join(dump_dir, dump_img_name), dump_img[:, :, ::-1])  # ::-1 because opencv expects BGR (and not RGB) format...
 
     if should_display:
         plt.imshow(dump_img)
@@ -127,7 +131,7 @@ def fetch_and_prepare_model(model_type, pretrained_weights, device):
 # todo: add support for rotation and spiral transform
 def transform_frame(config, frame):
     if config['frame_transform'] == SupportedTransforms.ZOOM:
-        s = 0.05
+        s = 0.03
         h, w = frame.shape[:2]
         frame = nd.affine_transform(frame, np.asarray([1 - s, 1 - s, 1]), [h * s / 2, w * s / 2, 0.0], order=1)
     elif config['frame_transform'] == SupportedTransforms.ROTATE:
@@ -149,10 +153,18 @@ def create_image_pyramid(img, num_octaves, octave_scale):
 
 
 def get_new_shape(config, base_shape, pyramid_level):
+    SHAPE_MARGIN = 10
     pyramid_ratio = config['pyramid_ratio']
     pyramid_size = config['pyramid_size']
     exponent = pyramid_level - pyramid_size + 1
-    return np.round(np.float32(base_shape)*(pyramid_ratio**exponent)).astype(np.int32)
+    new_shape = np.round(np.float32(base_shape)*(pyramid_ratio**exponent)).astype(np.int32)
+
+    if new_shape[0] < SHAPE_MARGIN or new_shape[1] < SHAPE_MARGIN:
+        print(f'Pyramid size {config["pyramid_size"]} with pyramid ratio {config["pyramid_ratio"]} gives overly small pyramid levels with size={new_shape}')
+        print(f'Change parameters.')
+        exit(0)
+
+    return new_shape
 
 
 def random_circular_spatial_shift(tensor, h_shift, w_shift, should_undo=False):
