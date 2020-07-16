@@ -1,3 +1,10 @@
+"""
+    This file contains the implementation of the DeepDream algorithm.
+
+    If you have problems understanding any parts of the code,
+    go ahead and experiment with functions in the playground.py file.
+"""
+
 import os
 import argparse
 import shutil
@@ -13,16 +20,12 @@ from utils.constants import *
 import utils.video_utils as video_utils
 
 
-# todo: can I adapt original caffe models/weights to PyTorch?
-# todo: add guided dreaming
-
 # todo: [0] try different VGG layers
 # todo: [1] create README
 # todo: [2] figure out which data to checkin
-# todo: [3] Refactor playground
 
 
-# layer_activation.backward(layer) <- original implementation did it like this it's equivalent to MSE(reduction='sum')/2
+# layer.backward(layer) <- original implementation did it like this it's equivalent to MSE(reduction='sum')/2
 def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
     out = model(input_tensor)
     # step1: Grab activations/feature maps of interest
@@ -110,7 +113,6 @@ def deep_dream_video_ouroboros(config):
     video_utils.create_video_from_intermediate_results(config)
 
 
-# todo: add optical flow support
 def deep_dream_video(config):
     video_path = os.path.join(config['inputs_path'], config['input'])
     tmp_input_dir = os.path.join(config['out_videos_path'], 'tmp_input')

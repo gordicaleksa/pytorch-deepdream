@@ -8,10 +8,9 @@ from torchvision import models
 from utils.constants import SupportedPretrainedWeights
 
 
-# todo: try out some other layers
 class Vgg16(torch.nn.Module):
     """Only those layers are exposed which have already proven to work nicely."""
-    def __init__(self, pretrained_weights, requires_grad=False, show_progress=False):
+    def __init__(self, pretrained_weights=SupportedPretrainedWeights.IMAGENET, requires_grad=False, show_progress=False):
         super().__init__()
         if pretrained_weights == SupportedPretrainedWeights.IMAGENET:
             vgg16 = models.vgg16(pretrained=True, progress=show_progress).eval()

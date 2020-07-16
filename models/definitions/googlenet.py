@@ -40,7 +40,7 @@ class GoogLeNet(torch.nn.Module):
             for param in self.parameters():
                 param.requires_grad = False
 
-    # todo: not sure why they are using this additionally made an issue
+    # todo: not sure why they are using this additional processing - made an issue
     #  https://discuss.pytorch.org/t/why-does-googlenet-additionally-process-input-via-transform-input/88865
     def transform_input(self, x):
         if self.transform_input:
