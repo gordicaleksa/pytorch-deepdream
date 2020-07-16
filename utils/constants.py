@@ -16,8 +16,8 @@ KERNEL_SIZE = 9  # "magic number" picked this one as it just works well
 
 class SupportedTransforms(enum.Enum):
     ZOOM = 0
-    ROTATE = 1
-    SPIRAL = 2
+    ZOOM_ROTATE = 1
+    TRANSLATE = 2
 
 
 class SupportedModels(enum.Enum):

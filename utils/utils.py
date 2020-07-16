@@ -130,16 +130,22 @@ def fetch_and_prepare_model(model_type, pretrained_weights, device):
     return model
 
 
-# todo: add support for rotation and spiral transform
+# Didn't want to expose these to the outer API - too much clutter, feel free to tweak params here
 def transform_frame(config, frame):
+    h, w = frame.shape[:2]
     if config['frame_transform'] == SupportedTransforms.ZOOM:
-        s = 0.03
-        h, w = frame.shape[:2]
-        frame = nd.affine_transform(frame, np.asarray([1 - s, 1 - s, 1]), [h * s / 2, w * s / 2, 0.0], order=1)
-    elif config['frame_transform'] == SupportedTransforms.ROTATE:
-        raise Exception(f'{SupportedTransforms.ROTATE.name} not yet supported.')
-    elif config['frame_transform'] == SupportedTransforms.SPIRAL:
-        raise Exception(f'{SupportedTransforms.SPIRAL.name} not yet supported.')
+        scale = 1.05  # Use this param to (un)zoom
+        rotation_matrix = cv.getRotationMatrix2D((w / 2, h / 2), 0, scale)
+        frame = cv.warpAffine(frame, rotation_matrix, (w, h))
+    elif config['frame_transform'] == SupportedTransforms.ZOOM_ROTATE:
+        deg = 3  # Adjust rotation speed (in [deg/frame])
+        scale = 1.1  # Use this to (un)zoom while rotating around image center
+        rotation_matrix = cv.getRotationMatrix2D((w / 2, h / 2), deg, scale)
+        frame = cv.warpAffine(frame, rotation_matrix, (w, h))
+    elif config['frame_transform'] == SupportedTransforms.TRANSLATE:
+        tx, ty = [5, 5]
+        translation_matrix = np.asarray([[1., 0., tx], [0., 1., ty]])
+        frame = cv.warpAffine(frame, translation_matrix, (w, h))
     else:
         raise Exception('Transformation not yet supported.')
 
@@ -180,25 +186,26 @@ class CascadeGaussianSmoothing(nn.Module):
     """
     def __init__(self, kernel_size, sigma):
         super().__init__()
-        channels = 3  # working only on 3-channel images
-        dim = 2  # 2D image
 
-        self.pad = int(kernel_size / 2)
+        cascade_coefficients = [0.5, 1.0, 2.0]  # std multipliers
+
+        sigmas = [[coeff * sigma, coeff * sigma] for coeff in cascade_coefficients]  # isotropic Gaussian
+
+        self.pad = int(kernel_size / 2)  # Used to pad the channels so that after applying the kernel we have same size
+
         if isinstance(kernel_size, numbers.Number):
-            kernel_size = [kernel_size] * dim
+            kernel_size = [kernel_size, kernel_size]
 
-        sigmas = [0.5 * sigma, 1.0 * sigma, 2.0 * sigma]
+        meshgrids = torch.meshgrid([torch.arange(size, dtype=torch.float32) for size in kernel_size])
 
         # The gaussian kernel is the product of the gaussian function of each dimension.
-        kernel = 1
-        meshgrids = torch.meshgrid([torch.arange(size, dtype=torch.float32) for size in kernel_size])
         kernels = []
-        for s in sigmas:
-            sigma = [s, s]
-            for size, std, mgrid in zip(kernel_size, sigma, meshgrids):
-                mean = (size - 1) / 2
-                kernel *= 1 / (std * math.sqrt(2 * math.pi)) * torch.exp(-((mgrid - mean) / std) ** 2 / 2)
-                kernels.append(kernel)
+        for sigma in sigmas:
+            kernel = 1
+            for size_1d, std_1d, mgrid in zip(kernel_size, sigma, meshgrids):
+                mean = (size_1d - 1) / 2
+                kernel *= 1 / (std_1d * math.sqrt(2 * math.pi)) * torch.exp(-((mgrid - mean) / std_1d) ** 2 / 2)
+            kernels.append(kernel)
 
         prepared_kernels = []
         for kernel in kernels:
@@ -206,15 +213,14 @@ class CascadeGaussianSmoothing(nn.Module):
             kernel = kernel / torch.sum(kernel)
 
             # Reshape to depthwise convolutional weight
-            kernel = kernel.view(1, 1, *kernel.size())
-            kernel = kernel.repeat(channels, *[1] * (kernel.dim() - 1))
+            kernel = kernel.view(1, 1, *kernel.shape)
+            kernel = kernel.repeat(3, *[1] * (kernel.dim() - 1))
             kernel = kernel.to('cuda')
             prepared_kernels.append(kernel)
 
         self.register_buffer('weight1', prepared_kernels[0])
         self.register_buffer('weight2', prepared_kernels[1])
         self.register_buffer('weight3', prepared_kernels[2])
-        self.groups = channels
         self.conv = F.conv2d
 
     def forward(self, input):
@@ -222,9 +228,9 @@ class CascadeGaussianSmoothing(nn.Module):
         Apply gaussian filter to input.
         """
         input = F.pad(input, [self.pad, self.pad, self.pad, self.pad], mode='reflect')
-        grad1 = self.conv(input, weight=self.weight1, groups=self.groups)
-        grad2 = self.conv(input, weight=self.weight2, groups=self.groups)
-        grad3 = self.conv(input, weight=self.weight3, groups=self.groups)
+        grad1 = self.conv(input, weight=self.weight1, groups=3)
+        grad2 = self.conv(input, weight=self.weight2, groups=3)
+        grad3 = self.conv(input, weight=self.weight3, groups=3)
         return grad1 + grad2 + grad3
 
 

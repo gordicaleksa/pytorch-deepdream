@@ -24,6 +24,8 @@ def create_video_name(config):
     input_name = os.path.basename(config['input']).split('.')[0]
     model_name = config['model'].name
     blend_info = 'blend_none' if config['blend'] is None else f'blend_{config["blend"]}'
+    if config['input'].endswith('.mp4'):
+        blend_info = ''  # Not used for ouroboros
     infix = f'{input_name}_width_{str(config["img_width"])}_model_{model_name}_{blend_info}'
 
     suffix = '.mp4'
