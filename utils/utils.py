@@ -11,7 +11,7 @@ from torch import nn
 import scipy.ndimage as nd
 
 
-from models.definitions.vggs import Vgg16
+from models.definitions.vggs import Vgg16, Vgg16Experimental
 from models.definitions.googlenet import GoogLeNet
 from models.definitions.resnets import ResNet50
 from models.definitions.alexnet import AlexNet
@@ -119,6 +119,8 @@ def linear_blend(img1, img2, alpha=0.5):
 def fetch_and_prepare_model(model_type, pretrained_weights, device):
     if model_type == SupportedModels.VGG16:
         model = Vgg16(pretrained_weights, requires_grad=False, show_progress=True).to(device)
+    elif model_type == SupportedModels.VGG16_EXPERIMENTAL:
+        model = Vgg16Experimental(pretrained_weights, requires_grad=False, show_progress=True).to(device)
     elif model_type == SupportedModels.GOOGLENET:
         model = GoogLeNet(pretrained_weights, requires_grad=False, show_progress=True).to(device)
     elif model_type == SupportedModels.RESNET50:

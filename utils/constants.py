@@ -22,9 +22,10 @@ class SupportedTransforms(enum.Enum):
 
 class SupportedModels(enum.Enum):
     VGG16 = 0
-    GOOGLENET = 1
-    RESNET50 = 2
-    ALEXNET = 3
+    VGG16_EXPERIMENTAL = 1
+    GOOGLENET = 2
+    RESNET50 = 3
+    ALEXNET = 4
 
 
 class SupportedPretrainedWeights(enum.Enum):
