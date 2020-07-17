@@ -27,10 +27,27 @@ Most of the original Deep Dream repos were written in **Caffe** and the ones wri
 
 This repo is an attempt of making the **cleanest** DeepDream repo that I'm aware of + it's written in **PyTorch!** :heart:
 
-All of the examples have parameters used to create them encoded into the file name, so you can either reconstruct them
-or create new ones - although there is some randomness in the process so identical reconstructions are not guaranteed.
-
 ## Examples
+
+Here are some examples that you can create using this code.
+
+### Lower layers = lower level features
+
+By using shallower layers of neural networks you'll get lower level patterns (edges, circles, etc.) as the output:
+
+<p align="center">
+<img src="data/examples/low_level_dreaming/figures_width_600_model_RESNET50_IMAGENET_layer2_pyrsize_11_pyrratio_1.3_iter_30_lr_0.09_shift_150_resized300.jpg" width="270"/>
+<img src="data/examples/low_level_dreaming/figures_width_600_model_RESNET50_IMAGENET_layer2_pyrsize_11_pyrratio_1.3_iter_10_lr_0.09_shift_34_resized300.jpg" width="270"/>
+<img src="data/examples/low_level_dreaming/figures_width_600_model_GOOGLENET_IMAGENET_inception3b_pyrsize_11_pyrratio_1.3_iter_10_lr_0.09_shift_35_resized300.jpg" width="270"/>
+</p>
+
+Here the first 2 images came from ResNet50 and the last one came from GoogLeNet (both pretrained on ImageNet).
+
+### Higher Layers = High level features
+
+By using deeper network layers you'll get higher level patterns (eyes, snouts, animal heads):
+
+
 
 *Note: all of the deepdream images were produced by me (using this repo), credits for original image artists [are given bellow](#acknowledgements).*
 
@@ -51,13 +68,15 @@ Follow through points 1 and 2 of [this setup](https://github.com/Petlja/PSIML/bl
 
 ## Usage
 
+*Note: All of the examples have parameters used to create them encoded into the file name, so you can either reconstruct them
+or create new ones - although there is some randomness in the process so identical reconstructions are not guaranteed.*
 
 ### Debugging/Experimenting
 
 
 ## Acknowledgements
 
-I found these repos useful: (while developing this one)
+I found these repos useful (while developing this one):
 * [deepdream](https://github.com/google/deepdream) (Caffe, original repo)
 * [DeepDreamAnim](https://github.com/samim23/DeepDreamAnim) (Caffe)
 * [AI-Art](https://github.com/Adi-iitd/AI-Art/blob/master/DeepDream.py) (PyTorch)
