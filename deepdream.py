@@ -151,18 +151,8 @@ if __name__ == "__main__":
     # Modifiable args - feel free to play with these (only a small subset is exposed by design to avoid cluttering)
     #
     parser = argparse.ArgumentParser()
-    # deep_dream_video_ouroboros specific arguments
-    parser.add_argument("--is_video", type=bool, help="Create DeepDream video - default is DeepDream static image", default=False)
-    parser.add_argument("--video_length", type=int, help="Number of video frames to produce for ouroboros", default=100)
-    parser.add_argument("--frame_transform", choices=SupportedTransforms,
-                        help="Transform used to transform the output frame and feed it back to the network input",
-                        default=SupportedTransforms.ZOOM_ROTATE)
-
-    # deep_dream_video specific arguments
-    parser.add_argument("--blend", type=float, help="Blend coefficient for video creation", default=0.85)
-
     # Common params
-    parser.add_argument("--input", type=str, help="Input image/video name that will be used for dreaming", default='green_bridge.jpg')
+    parser.add_argument("--input", type=str, help="Input IMAGE or VIDEO name that will be used for dreaming", default='cloud.jpg')
     parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
     parser.add_argument("--model", choices=SupportedModels, help="Neural network (model) to use for dreaming", default=SupportedModels.VGG16_EXPERIMENTAL)
     parser.add_argument("--pretrained_weights", choices=SupportedPretrainedWeights, help="Pretrained weights to use for the above model", default=SupportedPretrainedWeights.IMAGENET)
@@ -172,7 +162,17 @@ if __name__ == "__main__":
     parser.add_argument("--pyramid_size", type=int, help="Number of images in an image pyramid", default=4)
     parser.add_argument("--pyramid_ratio", type=float, help="Ratio of image sizes in the pyramid", default=1.8)
     parser.add_argument("--num_gradient_ascent_iterations", type=int, help="Number of gradient ascent iterations", default=10)
-    parser.add_argument("--lr", type=float, help="Learning rate i.e. step size in gradient ascent", default=0.09)
+    parser.add_argument("--lr", type=float, help="Learning rate i.e. step size in gradient ascent", default=0.1)
+
+    # deep_dream_video_ouroboros specific arguments
+    parser.add_argument("--is_video", type=bool, help="Create DeepDream video - default is DeepDream static image", default=False)
+    parser.add_argument("--video_length", type=int, help="Number of video frames to produce for ouroboros", default=30)
+    parser.add_argument("--frame_transform", choices=SupportedTransforms,
+                        help="Transform used to transform the output frame and feed it back to the network input",
+                        default=SupportedTransforms.ZOOM_ROTATE)
+
+    # deep_dream_video specific arguments
+    parser.add_argument("--blend", type=float, help="Blend coefficient for video creation", default=0.85)
 
     # You usually won't need to change these as often
     parser.add_argument("--should_display", type=bool, help="Display intermediate dreaming results", default=False)
@@ -189,6 +189,7 @@ if __name__ == "__main__":
     config['out_images_path'] = out_images_path
     config['out_videos_path'] = out_videos_path
     config['dump_dir'] = config['out_videos_path'] if config['is_video'] else config['out_images_path']
+    config['dump_dir'] = os.path.join(config['dump_dir'], f'{config["model"].name}_{config["pretrained_weights"].name}')
 
     # DeepDream algorithm in 3 flavours: static image, video and ouroboros (feeding net output to it's input)
     if any([config['input'].endswith(video_ext) for video_ext in SUPPORTED_VIDEO_FORMATS]):  # only support mp4 atm

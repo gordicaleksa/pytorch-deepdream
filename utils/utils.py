@@ -86,7 +86,6 @@ def save_and_maybe_display_image(config, dump_img, should_display=True, name_mod
 
     # step1: figure out the dump dir location
     dump_dir = config['dump_dir']
-    dump_dir = os.path.join(dump_dir, f'{config["model"].name}_{config["pretrained_weights"].name}')
     os.makedirs(dump_dir, exist_ok=True)
 
     # step2: define the output image name
