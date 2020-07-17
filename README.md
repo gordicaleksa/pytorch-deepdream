@@ -57,16 +57,23 @@ The 1st and 3rd were created using VGG 16 (ImageNet) and the middle one using Re
 
 ### Dataset matters (ImageNet vs Places 365)
 
-Depending whether the network was pretrained on ImageNet or Places 365 (or some other dataset) you'll get different results.
-
-If we keep every other parameter the same including the network architecture but we swap the pretrained weights we get these:
+If we keep every other parameter the same but we swap the pretrained weights we get these:
 
 <p align="center">
 <img src="data/examples/dataset_matters/figures_width_600_model_RESNET50_IMAGENET_layer4_pyrsize_8_pyrratio_1.4_iter_10_lr_0.09_shift_32_resized400.jpg" width="400"/>
 <img src="data/examples/dataset_matters/figures_width_600_model_RESNET50_PLACES_365_layer4_pyrsize_8_pyrratio_1.4_iter_10_lr_0.09_shift_32_resized400.jpg" width="400"/>
 </p>
 
-The image on the left was created using **ResNet50-ImageNet** whereas the one on the right was created by **ResNet50-Places365**.
+Left: **ResNet50-ImageNet** (we can see more animal features) Right: **ResNet50-Places365** (human built stuff, etc.).
+
+### Impact of pyramid size and ratio
+
+Dreaming is performed on multiple image resolutions when we stack those vertically we get an image pyramid.
+Depending on the number of levels of that pyramid (pyramid size) and the ratio between resolutions we get diff results:
+
+Increasing pyramid level:
+
+Increasing ratio:
 
 
 *Note: all of the deepdream images were produced by me (using this repo), credits for original image artists [are given bellow](#acknowledgements).*
