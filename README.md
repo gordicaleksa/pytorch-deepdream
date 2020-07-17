@@ -33,7 +33,7 @@ Here are some examples that you can create using this code.
 
 ### Lower layers = lower level features
 
-By using shallower layers of neural networks you'll get lower level patterns (edges, circles, etc.) as the output:
+By using shallower layers of neural networks you'll get lower level patterns (edges, circles, colors, etc.) as the output:
 
 <p align="center">
 <img src="data/examples/low_level_dreaming/figures_width_600_model_RESNET50_IMAGENET_layer2_pyrsize_11_pyrratio_1.3_iter_30_lr_0.09_shift_150_resized300.jpg" width="270"/>
@@ -47,7 +47,13 @@ Here the first 2 images came from ResNet50 and the last one came from GoogLeNet 
 
 By using deeper network layers you'll get higher level patterns (eyes, snouts, animal heads):
 
+<p align="center">
+<img src="data/examples/high_level_dreaming/figures_width_600_model_VGG16_IMAGENET_relu4_3_pyrsize_12_pyrratio_1.4_iter_10_lr_0.09_shift_101_resized300.jpg" width="270"/>
+<img src="data/examples/high_level_dreaming/figures_width_600_model_RESNET50_PLACES_365_layer4_pyrsize_11_pyrratio_1.3_iter_10_lr_0.09_shift_34_resized300.jpg" width="270"/>
+<img src="data/examples/high_level_dreaming/green_bridge_width_600_model_VGG16_EXPERIMENTAL_IMAGENET_relu4_3_pyrsize_4_pyrratio_1.8_iter_10_lr_0.09_shift_32_resized.jpg" width="270"/>
+</p>
 
+The 1st and 3rd were created using VGG 16 (ImageNet) and the middle one using ResNet50 pretrained on Places 365.
 
 *Note: all of the deepdream images were produced by me (using this repo), credits for original image artists [are given bellow](#acknowledgements).*
 
