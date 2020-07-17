@@ -1,20 +1,25 @@
 ## Deep Dream :computer: + :ocean::zzz: = :heart:
 This repo contains PyTorch implementation of the Deep Dream algorithm (:link: blog by [Mordvintstev et al.](https://ai.googleblog.com/2015/06/inceptionism-going-deeper-into-neural.html)).
 
+And it will give you the power to create these weird, psychedelic-looking images:
+
 <p align="center">
-<img src="data/examples/figures_width_600_model_VGG16_IMAGENET_relu4_3_pyrsize_12_pyrratio_1.4_iter_10_lr_0.09_shift_32.jpg" width="600"/>
+<img src="data/examples/figures_width_600_model_VGG16_IMAGENET_relu4_3_pyrsize_12_pyrratio_1.4_iter_10_lr_0.09_shift_32_resized500.jpg" width="488"/>
+<img src="data/examples/lion_width_600_model_VGG16_EXPERIMENTAL_IMAGENET_relu3_3_pyrsize_4_pyrratio_1.8_iter_10_lr_0.09_shift_32_resized400.jpg" width="325"/>
 </p>
 
-### What is Deep Dream algorithm?
-In a nutshell the algorithm maximizes activations of chosen network layers (1 or multiple) by doing gradient descent.
+Not bad, huh?
 
-So from an input image like the one of the left after "dreaming" we get the image on the right:
+### What is Deep Dream algorithm?
+In a nutshell the algorithm maximizes activations of chosen network layers (1 or multiple) by doing **gradient ascent**.
+
+So from an input image like the one on the left after "dreaming" we get the image on the right:
 <p align="center">
 <img src="data/input/figures.jpg" width="400"/>
 <img src="data/examples/figures_width_600_model_VGG16_IMAGENET_relu4_3_pyrsize_4_pyrratio_1.4_iter_10_lr_0.09_shift_41.jpg" width="400"/>
 </p>
 
-Who would have said that neural networks had this creativity hidden inside. :heart:
+Who would have said that neural networks had this creativity hidden inside? :art:
 
 ### Why yet another Deep Dream repo?
 
