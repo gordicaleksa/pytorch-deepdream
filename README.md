@@ -125,7 +125,7 @@ Instead of feeding the output back to input we just apply the algorithm per fram
 
 Linear blending just combines the current frame with the last one so as to reduce the flicker (here I used 0.85)
 
-*Note: all of the deepdream images/GIFs were produced by me (using this repo), credits for original image artists [are given bellow](#acknowledgements).*
+*Note: all of the deepdream images/GIFs were produced by me, credits for original image artists [are given bellow](#acknowledgements).*
 
 ## Setup
 
@@ -135,14 +135,17 @@ Linear blending just combines the current frame with the last one so as to reduc
 
 That's it! It should work out-of-the-box executing environment.yml file which deals with dependencies.
 
+*Note:* If you wish to use video functions I have - you'll need **ffmpeg.exe** in your system path.
+
 -----
 
 PyTorch package will pull some version of CUDA with it, but it is highly recommended that you install system-wide CUDA beforehand, mostly because of GPU drivers. I also recommend using Miniconda installer as a way to get conda on your system. 
 
 Follow through points 1 and 2 of [this setup](https://github.com/Petlja/PSIML/blob/master/docs/MachineSetup.md) and use the most up-to-date versions of Miniconda and CUDA/cuDNN.
-(I recommend CUDA 10.1 as it is compatible with PyTorch 1.5, which is used in this repo, and newest compatible cuDNN)
 
 ## Usage
+
+
 
 *Note: All of the examples have parameters used to create them encoded into the file name, so you can either reconstruct them
 or create new ones - although there is some randomness in the process so identical reconstructions are not guaranteed.*
@@ -164,6 +167,8 @@ I found the images I was using here:
 * [awesome bridge pic](https://www.pexels.com/photo/gray-bridge-and-trees-814499/)
 
 Other images are now already classics in the NST and DeepDream worlds.
+
+Places 365 models came from [this awesome repo](https://github.com/CSAILVision/places365).
 
 ## Citation
 

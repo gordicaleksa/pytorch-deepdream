@@ -180,9 +180,8 @@ def deep_dream_simple(img_path, dump_path):
 
 
 if __name__ == "__main__":
-    #
-    # Uncomment the concept you want to understand
-    #
+
+    print('Uncomment the concept you want to understand.')
 
     # understand_frame_transform()
 
@@ -190,10 +189,8 @@ if __name__ == "__main__":
 
     # understand_pytorch_gradients()
 
-    img_path = os.path.join(os.path.dirname(__file__), 'data', 'input', 'figures.jpg')
-    dump_path = os.path.join(os.path.dirname(__file__), 'data', 'out-images', 'simple.jpg')
-    deep_dream_simple(img_path, dump_path)
+    # img_path = os.path.join(os.path.dirname(__file__), 'data', 'input', 'figures.jpg')
+    # dump_path = os.path.join(os.path.dirname(__file__), 'data', 'out-images', 'simple.jpg')
+    # deep_dream_simple(img_path, dump_path)
 
-    # frames_dir = r'C:\tmp_data_dir\YouTube\CodingProjects\DeepDream\data\out-videos\tmp'
-    # out_path = r'C:\tmp_data_dir\YouTube\CodingProjects\DeepDream\data\out-videos\tmp\first.gif'
-    # video_utils.create_gif(frames_dir, out_path)
+    # video_utils.create_gif(input_frames_dir, out_path)
