@@ -27,9 +27,9 @@ Most of the original Deep Dream repos were written in **Caffe** and the ones wri
 
 This repo is an attempt of making the **cleanest** DeepDream repo that I'm aware of + it's written in **PyTorch!** :heart:
 
-## Examples
+## Static Image Examples
 
-Here are some examples that you can create using this code.
+Here are some examples that you can create using this code (**deep_dream_static_image** function).
 
 ### Lower layers = lower level features
 
@@ -81,7 +81,7 @@ Going from left to right the only parameter that changed was the pyramid size (f
 ### Impact of increasing the pyramid ratio
 
 Playing with pyramid ratio has a similar/related effect - the basic idea is that the relative area of the image which the deeper neurons can modify and "see"
-(the so-called receptive field of the net) is increasing and we get increasingly bigger features like eyes popping out:
+(the so-called **receptive field** of the net) is increasing and we get increasingly bigger features like eyes popping out (from left to right: 1.1, 1.5, 1.8):
 
 <p align="center">
 <img src="data/examples/pyramid_ratio/figures_width_600_model_VGG16_EXPERIMENTAL_IMAGENET_relu4_2_pyrsize_5_pyrratio_1.1_iter_10_lr_0.09_shift_38_resized300.jpg" width="270"/>
@@ -89,11 +89,37 @@ Playing with pyramid ratio has a similar/related effect - the basic idea is that
 <img src="data/examples/pyramid_ratio/figures_width_600_model_VGG16_EXPERIMENTAL_IMAGENET_relu4_2_pyrsize_5_pyrratio_1.8_iter_10_lr_0.09_shift_38_resized300.jpg" width="270"/>
 </p>
 
-From left to right: 1.1, 1.5, 1.8 (you can see the exact params used in the filename itself located in `data/examples/pyramid_ratio/`.
+*Note:* you can see the exact params used in the image filename itself located in `data/examples/pyramid_ratio/`.
 
+## Ouroboros Examples
 
+Here are some further examples that you can create using this code (**deep_dream_video_ouroboros** function).
 
-*Note: all of the deepdream images were produced by me (using this repo), credits for original image artists [are given bellow](#acknowledgements).*
+The idea here is that whatever the network "dreams" just feed that back to it's input and apply some geometric transform.
+
+### Ouroboros: Zoom transform
+
+If we apply only central zoom we get this:
+
+<img src="data/examples/ouroboros/zoom.gif" />
+
+### Ouroboros: Zoom and Rotation transforms
+
+Applying central zoom and at the same time applying a 3 degree rotation per frame yields this:
+
+<img src="data/examples/ouroboros/zoom_rotate.gif" />
+
+### Ouroboros: Translation 
+
+Finally if we do a simple translation (5 px per frame top left to bottom right direction):
+
+<img src="data/examples/ouroboros/translation.gif" />
+
+## DeepDream video examples
+
+Instead of feeding the output back to input we just apply the algorithm per frame and apply some linear blending:
+
+*Note: all of the deepdream images/GIFs were produced by me (using this repo), credits for original image artists [are given bellow](#acknowledgements).*
 
 ## Setup
 
