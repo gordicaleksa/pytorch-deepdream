@@ -54,6 +54,7 @@ class Vgg16(torch.nn.Module):
         return out
 
 
+# I've just exposed deeper, nice, layers in this 'experimental' VGG 16 otherwise no difference with the one above.
 class Vgg16Experimental(torch.nn.Module):
     """Everything exposed so you can play with different combinations for style and content representation"""
     def __init__(self, pretrained_weights, requires_grad=False, show_progress=False):

@@ -143,15 +143,38 @@ PyTorch package will pull some version of CUDA with it, but it is highly recomme
 
 Follow through points 1 and 2 of [this setup](https://github.com/Petlja/PSIML/blob/master/docs/MachineSetup.md) and use the most up-to-date versions of Miniconda and CUDA/cuDNN.
 
-## Usage
+## Basic Usage
 
+Important thing to note - whatever image or video you want to use **place it inside the `data/input/` directory.**
 
+To create some **static Deep Dream images** run the following command:
+
+`python deepdream.py --input <img_name>`
+
+This will use the default settings but you'll immediately get a meaningful result saved to `data/out-images/VGG16_EXPERIMENTAL_IMAGENET/`.
+
+-----
+To run **ouroboros** do the following:
+
+`python deepdream.py --input <img_name> --is_video true`
+
+It will dump the intermediate frames to `data/out-videos/VGG16_EXPERIMENTAL_IMAGENET/` and it will save the final video to `data/out-videos`.
+
+-----
+To run **Deep Dream video** run this:
+
+`python deepdream.py --input <video_name>`
+
+It will dump the intermediate frames to `data/out-videos/tmp_out` and it will save the final video to `data/out-videos`.
+
+## Experimenting
+
+You'll probably wish to have more control of the output you create - and the code is hopefully self-explanatory to help you do that.
+
+I'll just summarize the most important params here:
 
 *Note: All of the examples have parameters used to create them encoded into the file name, so you can either reconstruct them
 or create new ones - although there is some randomness in the process so identical reconstructions are not guaranteed.*
-
-### Debugging/Experimenting
-
 
 ## Acknowledgements
 
@@ -168,7 +191,7 @@ I found the images I was using here:
 
 Other images are now already classics in the NST and DeepDream worlds.
 
-Places 365 models came from [this awesome repo](https://github.com/CSAILVision/places365).
+Places 365 pretrained models came from [this awesome repo](https://github.com/CSAILVision/places365).
 
 ## Citation
 
