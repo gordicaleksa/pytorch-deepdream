@@ -76,9 +76,20 @@ Dreaming is performed on multiple image resolutions stacked "vertically" (we cal
 <img src="data/examples/pyramid_size/figures_width_600_model_VGG16_EXPERIMENTAL_IMAGENET_relu4_3_pyrsize_9_pyrratio_1.3_iter_10_lr_0.09_shift_33_resized300.jpg" width="270"/>
 </p>
 
-Going from left to right the only parameter that changed was the pyramid size from left to right: 3, 7, 9 levels.
+Going from left to right the only parameter that changed was the pyramid size (from left to right: 3, 7, 9 levels).
 
 ### Impact of increasing the pyramid ratio
+
+Playing with pyramid ratio has a similar/related effect - the basic idea is that the relative area of the image which the deeper neurons can modify and "see"
+(the so-called receptive field of the net) is increasing and we get increasingly bigger features like eyes popping out:
+
+<p align="center">
+<img src="data/examples/pyramid_ratio/figures_width_600_model_VGG16_EXPERIMENTAL_IMAGENET_relu4_2_pyrsize_5_pyrratio_1.1_iter_10_lr_0.09_shift_38_resized300.jpg" width="270"/>
+<img src="data/examples/pyramid_ratio/figures_width_600_model_VGG16_EXPERIMENTAL_IMAGENET_relu4_2_pyrsize_5_pyrratio_1.5_iter_10_lr_0.09_shift_38_resized300.jpg" width="270"/>
+<img src="data/examples/pyramid_ratio/figures_width_600_model_VGG16_EXPERIMENTAL_IMAGENET_relu4_2_pyrsize_5_pyrratio_1.8_iter_10_lr_0.09_shift_38_resized300.jpg" width="270"/>
+</p>
+
+From left to right: 1.1, 1.5, 1.8 (you can see the exact params used in the filename itself located in `data/examples/pyramid_ratio/`.
 
 
 
