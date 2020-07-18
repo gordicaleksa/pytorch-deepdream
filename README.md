@@ -151,10 +151,12 @@ To create some **static Deep Dream images** run the following command:
 
 `python deepdream.py --input <img_name>`
 
-This will use the default settings but you'll immediately get a meaningful result saved to `data/out-images/VGG16_EXPERIMENTAL_IMAGENET/`.
+This will use the default settings but you'll immediately get a meaningful result saved to:<br/>
+`data/out-images/VGG16_EXPERIMENTAL_IMAGENET/`<br/>
+The last directory will change depending on the model and pretrained weights you use.
 
 -----
-To run **ouroboros** do the following:
+To run **Ouroboros** do the following:
 
 `python deepdream.py --input <img_name> --is_video true`
 
@@ -170,11 +172,30 @@ It will dump the intermediate frames to `data/out-videos/tmp_out` and it will sa
 ## Experimenting
 
 You'll probably wish to have more control of the output you create - and the code is hopefully self-explanatory to help you do that.
-
 I'll just summarize the most important params here:
 
-*Note: All of the examples have parameters used to create them encoded into the file name, so you can either reconstruct them
-or create new ones - although there is some randomness in the process so identical reconstructions are not guaranteed.*
+`--model` - choose between VGG 16 (best for high-level features), ResNet 50 (nice for mid-level features), GoogLeNet (low-to-mid features are nice).<br/>
+AlexNet didn't give me nice results so I haven't used any of it's outputs in this README - if you manage to get it working please create an issue.
+
+`--layers_to_use` - you can use single or multiple layers here just put them in a list like ['relu3_3', 'relu4_3']. <br/>
+Depending on the model you choose you'll have to set different layer names:<br/>
+
+For VGG16_EXPERIMENTAL you have these on your disposal: `relu3_3`, `relu4_1`, `relu4_2`, etc. (checkout `models/definitions/vggs.py`)
+
+For RESNET50 `layer1`, `layer2`, `layer3` and `layer4` but again go to `models/definitions/resnets.py` and expose the layers <br/>
+that you find particularly beautiful. There are many layers you can experiment with especially with ResNet50.
+
+`--pyramid_size` - already briefly touched on this one - the bigger you go here the the less recognizable the original image will become.
+
+`--pyramid_ratio` - some combinations of this one and `pyramid_size` will make too small of an output and crash the program.
+
+-----
+
+*Note: All of the examples I used in this README have parameters used to create them encoded directly into the file name,<br/>
+so you can reconstruct them - although there is some randomness in the process so identical reconstructions are not guaranteed.*
+
+There is a small ambiguity on which exact sublayer was used (e.g. ResNet50's layer4 but which exact sublayer?)<br/>
+I usually encoded the sublayer through the `shift_` infix you can just try out a couple of them and find the exact one.
 
 ## Acknowledgements
 
