@@ -174,20 +174,28 @@ It will dump the intermediate frames to `data/out-videos/tmp_out` and it will sa
 You'll probably wish to have more control of the output you create - and the code is hopefully self-explanatory to help you do that.
 I'll just summarize the most important params here:
 
-`--model` - choose between VGG 16 (best for high-level features), ResNet 50 (nice for mid-level features), GoogLeNet (low-to-mid features are nice).<br/>
+`--model` - choose between VGG 16 (best for high-level features), ResNet 50 (nice for mid-level features), GoogLeNet (low-to-mid features are nice).
 AlexNet didn't give me nice results so I haven't used any of it's outputs in this README - if you manage to get it working please create an issue.
 
 `--layers_to_use` - you can use single or multiple layers here just put them in a list like ['relu3_3', 'relu4_3']. <br/>
 Depending on the model you choose you'll have to set different layer names:<br/>
 
-For VGG16_EXPERIMENTAL you have these on your disposal: `relu3_3`, `relu4_1`, `relu4_2`, etc. (checkout `models/definitions/vggs.py`)
+For VGG16_EXPERIMENTAL you have these on your disposal: `relu3_3`, `relu4_1`, `relu4_2`, etc.<br/>
+(checkout `models/definitions/vggs.py` for more details)
 
-For RESNET50 `layer1`, `layer2`, `layer3` and `layer4` but again go to `models/definitions/resnets.py` and expose the layers <br/>
+For RESNET50 `layer1`, `layer2`, `layer3` and `layer4` but again go to `models/definitions/resnets.py` and expose the layers
 that you find particularly beautiful. There are many layers you can experiment with especially with ResNet50.
 
 `--pyramid_size` - already briefly touched on this one - the bigger you go here the the less recognizable the original image will become.
 
 `--pyramid_ratio` - some combinations of this one and `pyramid_size` will make too small of an output and crash the program.
+
+You're ready to go! Here is some more candy for you:
+
+<p align="center">
+<img src="data/examples/footer/figures_width_600_model_RESNET50_PLACES_365_layer3_pyrsize_11_pyrratio_1.3_iter_10_lr_0.09_shift_32_resized400.jpg" width="400"/>
+<img src="data/examples/footer/figures_width_600_model_RESNET50_PLACES_365_layer4_pyrsize_11_pyrratio_1.3_iter_10_lr_0.09_shift_32_resized400.jpg" width="400"/>
+</p>
 
 -----
 
