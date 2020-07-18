@@ -23,7 +23,7 @@ Who would have said that neural networks had this creativity hidden inside? :art
 
 ### Why yet another Deep Dream repo?
 
-Most of the original Deep Dream repos were written in **Caffe** and the ones written in PyTorch are usually of low quality or really hard to read.
+Most of the original Deep Dream repos were written in **Caffe** and the ones written in PyTorch are usually really hard to read and understand.
 
 This repo is an attempt of making the **cleanest** DeepDream repo that I'm aware of + it's written in **PyTorch!** :heart:
 
@@ -66,14 +66,20 @@ If we keep every other parameter the same but we swap the pretrained weights we 
 
 Left: **ResNet50-ImageNet** (we can see more animal features) Right: **ResNet50-Places365** (human built stuff, etc.).
 
-### Impact of pyramid size and ratio
+### Impact of increasing the pyramid size
 
-Dreaming is performed on multiple image resolutions when we stack those vertically we get an image pyramid.
-Depending on the number of levels of that pyramid (pyramid size) and the ratio between resolutions we get diff results:
+Dreaming is performed on multiple image resolutions stacked "vertically" (we call that an **image pyramid**).
 
-Increasing pyramid level:
+<p align="center">
+<img src="data/examples/pyramid_size/figures_width_600_model_VGG16_EXPERIMENTAL_IMAGENET_relu4_3_pyrsize_3_pyrratio_1.3_iter_10_lr_0.09_shift_33_resized300.jpg" width="270"/>
+<img src="data/examples/pyramid_size/figures_width_600_model_VGG16_EXPERIMENTAL_IMAGENET_relu4_3_pyrsize_7_pyrratio_1.3_iter_10_lr_0.09_shift_33_resized300.jpg" width="270"/>
+<img src="data/examples/pyramid_size/figures_width_600_model_VGG16_EXPERIMENTAL_IMAGENET_relu4_3_pyrsize_9_pyrratio_1.3_iter_10_lr_0.09_shift_33_resized300.jpg" width="270"/>
+</p>
 
-Increasing ratio:
+Going from left to right the only parameter that changed was the pyramid size from left to right: 3, 7, 9 levels.
+
+### Impact of increasing the pyramid ratio
+
 
 
 *Note: all of the deepdream images were produced by me (using this repo), credits for original image artists [are given bellow](#acknowledgements).*
