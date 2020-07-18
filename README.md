@@ -95,7 +95,7 @@ Playing with pyramid ratio has a similar/related effect - the basic idea is that
 
 Here are some further examples that you can create using this code (**deep_dream_video_ouroboros** function).
 
-The idea here is that whatever the network "dreams" just feed that back to it's input and apply some geometric transform.
+The idea here is that whatever the network dreams just feed that back to it's input and apply geometric transform.
 
 ### Ouroboros: Zoom transform
 
@@ -115,9 +115,15 @@ Finally if we do a simple translation (5 px per frame top left to bottom right d
 
 <img src="data/examples/ouroboros/translation.gif" />
 
+Hopefully these did not break your brain - it feels like web 1.0 early 2000s. Bear with me.
+
 ## DeepDream video examples
 
 Instead of feeding the output back to input we just apply the algorithm per frame and apply some linear blending:
+
+<img src="data/examples/deepdream_video/deepdream_video.gif" />
+
+Linear blending just combines the current frame with the last one so as to reduce the flicker (here I used 0.85)
 
 *Note: all of the deepdream images/GIFs were produced by me (using this repo), credits for original image artists [are given bellow](#acknowledgements).*
 
