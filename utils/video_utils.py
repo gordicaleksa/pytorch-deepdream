@@ -3,7 +3,6 @@ import subprocess
 import shutil
 import re
 
-
 import cv2 as cv
 import imageio
 
@@ -42,8 +41,9 @@ def create_video_from_intermediate_results(config, metadata=None):
     number_of_frames_to_process = len(valid_frames(config['dump_dir']))  # default - don't trim process every frame
     out_file_name = create_video_name(config)
 
-    ffmpeg = 'ffmpeg.exe'
-    if shutil.which(ffmpeg):  # if ffmpeg.exe is in system path
+    ffmpeg = 'ffmpeg'
+    if(os.name == 'nt'): ffmpeg += '.exe'
+    if shutil.which(ffmpeg):  # if ffmpeg is in system path
         input_options = ['-r', str(fps), '-i', img_pattern]
         trim_video_command = ['-start_number', str(first_frame), '-vframes', str(number_of_frames_to_process)]
         encoding_options = ['-c:v', 'libx264', '-crf', '25', '-pix_fmt', 'yuv420p']
@@ -57,8 +57,9 @@ def create_video_from_intermediate_results(config, metadata=None):
 
 
 def dump_frames(video_path, dump_dir):
-    ffmpeg = 'ffmpeg.exe'
-    if shutil.which(ffmpeg):  # if ffmpeg.exe is in system path
+    ffmpeg = 'ffmpeg'
+    if(os.name == 'nt'): ffmpeg += '.exe'
+    if shutil.which(ffmpeg):  # if ffmpeg is in system path
         cap = cv.VideoCapture(video_path)
         fps = int(cap.get(cv.CAP_PROP_FPS))
 
