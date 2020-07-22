@@ -119,7 +119,7 @@ def deep_dream_video(config):
     metadata = video_utils.dump_frames(video_path, tmp_input_dir)
 
     last_img = None
-    for frame_id, frame_name in enumerate(os.listdir(tmp_input_dir)):
+    for frame_id, frame_name in enumerate(sorted(os.listdir(tmp_input_dir))):
         print(f'Processing frame {frame_id}')
         frame_path = os.path.join(tmp_input_dir, frame_name)
         frame = utils.load_image(frame_path, target_shape=config['img_width'])

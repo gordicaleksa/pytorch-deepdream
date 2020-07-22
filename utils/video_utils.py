@@ -13,7 +13,7 @@ def valid_frames(input_dir):
     def valid_frame_name(str):
         pattern = re.compile(r'[0-9]{6}\.jpg')  # regex, examples it covers: 000000.jpg or 923492.jpg, etc.
         return re.fullmatch(pattern, str) is not None
-    candidate_frames = os.listdir(input_dir)
+    candidate_frames = sorted(os.listdir(input_dir))
     valid_frames = list(filter(valid_frame_name, candidate_frames))
     return valid_frames
 
@@ -78,7 +78,7 @@ def dump_frames(video_path, dump_dir):
 def create_gif(frames_dir, out_path):
     assert os.path.splitext(out_path)[1].lower() == '.gif', f'Expected gif got {os.path.splitext(out_path)[1]}.'
 
-    frame_paths = [os.path.join(frames_dir, frame_name) for frame_name in os.listdir(frames_dir) if frame_name.endswith('.jpg')]
+    frame_paths = [os.path.join(frames_dir, frame_name) for frame_name in sorted(os.listdir(frames_dir)) if frame_name.endswith('.jpg')]
     images = [imageio.imread(frame_path) for frame_path in frame_paths]
     imageio.mimwrite(out_path, images, fps=10)
     print(f'Saved gif to {out_path}.')
