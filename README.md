@@ -135,7 +135,7 @@ Linear blending just combines the current frame with the last one so as to reduc
 
 That's it! It should work out-of-the-box executing environment.yml file which deals with dependencies.
 
-*Note:* If you wish to use video functions I have - you'll need **ffmpeg.exe** in your system path.
+*Note:* If you wish to use video functions I have - you'll need **ffmpeg** in your system path.
 
 -----
 
