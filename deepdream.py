@@ -19,6 +19,7 @@ import utils.utils as utils
 from utils.constants import *
 import utils.video_utils as video_utils
 
+from utils.device import device
 
 # layer.backward(layer) <- original implementation did it like this it's equivalent to MSE(reduction='sum')/2
 def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
@@ -53,7 +54,6 @@ def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
 
 
 def deep_dream_static_image(config, img):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # checking whether you have a GPU
 
     model = utils.fetch_and_prepare_model(config['model'], config['pretrained_weights'], device)
     try:

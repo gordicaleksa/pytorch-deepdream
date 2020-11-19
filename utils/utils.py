@@ -16,6 +16,7 @@ from models.definitions.googlenet import GoogLeNet
 from models.definitions.resnets import ResNet50
 from models.definitions.alexnet import AlexNet
 from .constants import *
+from .device import device
 
 
 #
@@ -216,7 +217,7 @@ class CascadeGaussianSmoothing(nn.Module):
             # Reshape to depthwise convolutional weight
             kernel = kernel.view(1, 1, *kernel.shape)
             kernel = kernel.repeat(3, *[1] * (kernel.dim() - 1))
-            kernel = kernel.to('cuda')
+            kernel = kernel.to(device)
             prepared_kernels.append(kernel)
 
         self.register_buffer('weight1', prepared_kernels[0])
