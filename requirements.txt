@@ -1,4 +1,3 @@
-PyQt5==5.15.1
 torch
 torchvision
 numpy
