@@ -37,7 +37,7 @@ def create_video_name(config):
 def create_video_from_intermediate_results(config, metadata=None):
     # save_and_maybe_display_image uses this same format (it's hardcoded there), not adaptive but does the job
     img_pattern = os.path.join(config['dump_dir'], '%6d.jpg')
-    fps = 5 if metadata is None else metadata['fps']
+    fps = config['fps']
     first_frame = 0
     number_of_frames_to_process = len(valid_frames(config['dump_dir']))  # default - don't trim process every frame
     out_file_name = create_video_name(config)
@@ -61,6 +61,7 @@ def dump_frames(video_path, dump_dir):
     if shutil.which(ffmpeg):  # if ffmpeg is in system path
         cap = cv.VideoCapture(video_path)
         fps = int(cap.get(cv.CAP_PROP_FPS))
+        fps = 30
 
         input_options = ['-i', video_path]
         extract_options = ['-r', str(fps)]

@@ -170,6 +170,7 @@ if __name__ == "__main__":
     parser.add_argument("--frame_transform", choices=SupportedTransforms,
                         help="Transform used to transform the output frame and feed it back to the network input",
                         default=SupportedTransforms.ZOOM_ROTATE)
+    parser.add_argument("--fps", type=int, help="Frames per second", default=30)
 
     # deep_dream_video specific arguments (ignore for other 2 functions)
     parser.add_argument("--blend", type=float, help="Blend coefficient for video creation", default=0.85)
@@ -190,6 +191,7 @@ if __name__ == "__main__":
     config['out_videos_path'] = out_videos_path
     config['dump_dir'] = config['out_videos_path'] if config['is_video'] else config['out_images_path']
     config['dump_dir'] = os.path.join(config['dump_dir'], f'{config["model"].name}_{config["pretrained_weights"].name}')
+
 
     # DeepDream algorithm in 3 flavours: static image, video and ouroboros (feeding net output to it's input)
     if any([config['input'].endswith(video_ext) for video_ext in SUPPORTED_VIDEO_FORMATS]):  # only support mp4 atm

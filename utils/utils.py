@@ -134,18 +134,19 @@ def fetch_and_prepare_model(model_type, pretrained_weights, device):
 
 # Didn't want to expose these to the outer API - too much clutter, feel free to tweak params here
 def transform_frame(config, frame):
+    fps = float(config['fps'])
     h, w = frame.shape[:2]
     if config['frame_transform'] == SupportedTransforms.ZOOM:
-        scale = 1.05  # Use this param to (un)zoom
+        scale = 1.27628 ** (1 / fps) # Use this param to (un)zoom
         rotation_matrix = cv.getRotationMatrix2D((w / 2, h / 2), 0, scale)
         frame = cv.warpAffine(frame, rotation_matrix, (w, h))
     elif config['frame_transform'] == SupportedTransforms.ZOOM_ROTATE:
-        deg = 3  # Adjust rotation speed (in [deg/frame])
-        scale = 1.1  # Use this to (un)zoom while rotating around image center
+        deg = max(1, int(15 / fps))   # Adjust rotation speed (in [deg/frame])
+        scale = 1.6105 ** (1 / fps)  # Use this to (un)zoom while rotating around image center
         rotation_matrix = cv.getRotationMatrix2D((w / 2, h / 2), deg, scale)
         frame = cv.warpAffine(frame, rotation_matrix, (w, h))
     elif config['frame_transform'] == SupportedTransforms.TRANSLATE:
-        tx, ty = [5, 5]
+        tx, ty = [max(1, int(25 / fps)), max(1, int(25 / fps))]
         translation_matrix = np.asarray([[1., 0., tx], [0., 1., ty]])
         frame = cv.warpAffine(frame, translation_matrix, (w, h))
     else:
