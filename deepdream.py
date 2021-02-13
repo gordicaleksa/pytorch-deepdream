@@ -103,8 +103,7 @@ def deep_dream_video_ouroboros(config):
     assert any([config['input'].lower().endswith(img_ext) for img_ext in SUPPORTED_IMAGE_FORMATS]), \
         f'Expected an image, but got {config["input"]}. Supported image formats {SUPPORTED_IMAGE_FORMATS}.'
 
-    print(f'Creating ouroboros video with {config["ouroboros_length"]} frames and {config["frame_transform"]} frame transform.')
-    print('*' * 80, '\n')
+    utils.print_ouroboros_video_header(config)  # print some ouroboros-related metadata to the console
 
     img_path = os.path.join(INPUT_DATA_PATH, config['input'])
     # load numpy, [0, 1] range, channel-last, RGB image
@@ -134,6 +133,7 @@ def deep_dream_video(config):
     os.makedirs(tmp_output_dir, exist_ok=True)
 
     metadata = video_utils.extract_frames(video_path, tmp_input_dir)
+    utils.print_deep_dream_video_header(config)
 
     last_img = None
     for frame_id, frame_name in enumerate(sorted(os.listdir(tmp_input_dir))):

@@ -245,3 +245,21 @@ def create_image_pyramid(img, num_octaves, octave_scale):
     for i in range(num_octaves-1):  # img_pyramid will have "num_octaves" images
         img_pyramid.append(cv.resize(img_pyramid[-1], (0, 0), fx=1./octave_scale, fy=1./octave_scale))
     return img_pyramid
+
+
+def print_deep_dream_video_header(config):
+    print(f'Creating a DeepDream video from {config["input"]}, via {config["model_name"]} model.')
+    print(f'Using pretrained weights = {config["pretrained_weights"]}')
+    print(f'Using model layers = {config["layers_to_use"]}')
+    print(f'Using lending coefficient = {config["blend"]}.')
+    print(f'Video output width = {config["img_width"]}')
+    print('*' * 50, '\n')
+
+
+def print_ouroboros_video_header(config):
+    print(f'Creating a {config["ouroboros_length"]}-frame Ouroboros video from {config["input"]}, via {config["model_name"]} model.')
+    print(f'Using {config["frame_transform"]} for the frame transform')
+    print(f'Using pretrained weights = {config["pretrained_weights"]}')
+    print(f'Using model layers = {config["layers_to_use"]}')
+    print(f'Video output width = {config["img_width"]}')
+    print('*' * 50, '\n')
