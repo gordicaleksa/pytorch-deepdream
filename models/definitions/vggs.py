@@ -12,6 +12,7 @@ class Vgg16(torch.nn.Module):
     """Only those layers are exposed which have already proven to work nicely."""
     def __init__(self, pretrained_weights=SupportedPretrainedWeights.IMAGENET.name, requires_grad=False, show_progress=False):
         super().__init__()
+
         if pretrained_weights == SupportedPretrainedWeights.IMAGENET.name:
             vgg16 = models.vgg16(pretrained=True, progress=show_progress).eval()
         else:
@@ -33,7 +34,7 @@ class Vgg16(torch.nn.Module):
         for x in range(16, 23):
             self.slice4.add_module(str(x), vgg_pretrained_features[x])
 
-        # Set these to False so that PyTorch won't be including them in it's autograd engine - eating up precious memory
+        # Set these to False so that PyTorch won't be including them in its autograd engine - eating up precious memory
         if not requires_grad:
             for param in self.parameters():
                 param.requires_grad = False
@@ -101,6 +102,7 @@ class Vgg16Experimental(torch.nn.Module):
         self.conv5_3 = vgg_pretrained_features[28]
         self.relu5_3 = vgg_pretrained_features[29]
         self.max_pooling5 = vgg_pretrained_features[30]
+
         if not requires_grad:
             for param in self.parameters():
                 param.requires_grad = False

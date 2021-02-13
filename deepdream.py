@@ -58,9 +58,7 @@ def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
 
 
 def deep_dream_static_image(config, img):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # checking whether you have a GPU
-
-    model = utils.fetch_and_prepare_model(config['model_name'], config['pretrained_weights'], device)
+    model = utils.fetch_and_prepare_model(config['model_name'], config['pretrained_weights'], DEVICE)
     try:
         layer_ids_to_use = [model.layer_names.index(layer_name) for layer_name in config['layers_to_use']]
     except Exception as e:  # making sure you set the correct layer name for this specific model
@@ -84,7 +82,7 @@ def deep_dream_static_image(config, img):
     for pyramid_level in range(config['pyramid_size']):
         new_shape = utils.get_new_shape(config, base_shape, pyramid_level)
         img = cv.resize(img, (new_shape[1], new_shape[0]))
-        input_tensor = utils.pytorch_input_adapter(img, device)
+        input_tensor = utils.pytorch_input_adapter(img, DEVICE)
 
         for iteration in range(config['num_gradient_ascent_iterations']):
             h_shift, w_shift = np.random.randint(-config['spatial_shift_size'], config['spatial_shift_size'] + 1, 2)

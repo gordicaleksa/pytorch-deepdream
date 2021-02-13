@@ -187,10 +187,12 @@ def random_circular_spatial_shift(tensor, h_shift, w_shift, should_undo=False):
 
 class CascadeGaussianSmoothing(nn.Module):
     """
-    Apply gaussian smoothing seperately for each channel (depthwise convolution)
+    Apply gaussian smoothing seperately for each channel (depthwise convolution).
+
     Arguments:
         kernel_size (int, sequence): Size of the gaussian kernel.
         sigma (float, sequence): Standard deviation of the gaussian kernel.
+
     """
     def __init__(self, kernel_size, sigma):
         super().__init__()
@@ -226,9 +228,9 @@ class CascadeGaussianSmoothing(nn.Module):
             kernel = kernel.to('cuda')
             prepared_kernels.append(kernel)
 
-        self.register_buffer('weight1', prepared_kernels[0])
-        self.register_buffer('weight2', prepared_kernels[1])
-        self.register_buffer('weight3', prepared_kernels[2])
+        self.weight1 = prepared_kernels[0]
+        self.weight2 = prepared_kernels[1]
+        self.weight3 = prepared_kernels[2]
         self.conv = F.conv2d
 
     def forward(self, input):

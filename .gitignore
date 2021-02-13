@@ -1,8 +1,17 @@
+# PyCharm IDE
 .idea
 __pycache__
 
+# Data directory
 data/
 
+# Pretrained weights binaries
+models/binaries
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Images in the root (if they exist)
 *.jpg
 *.png
 *.psd

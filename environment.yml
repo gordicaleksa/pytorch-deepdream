@@ -13,4 +13,5 @@ dependencies:
     - scipy==1.5.1
     - opencv-python==4.2.0.32
     - imageio==2.9.0
+    - jupyter==1.0.0
 

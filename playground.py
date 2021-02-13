@@ -144,8 +144,6 @@ def deep_dream_simple(img_path, dump_path):
         Most of the "code" are comments otherwise it literally takes 15 minutes to write down.
 
     """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     img = utils.load_image(img_path, target_shape=500)  # load numpy, [0, 1] image
     # Normalize image - VGG 16 and in general Pytorch (torchvision) models were trained like this,
     # so they learned to work with this particular distribution
@@ -153,10 +151,10 @@ def deep_dream_simple(img_path, dump_path):
     # Transform into PyTorch tensor, send to GPU and add dummy batch dimension. Models are expecting it, GPUs are
     # highly parallel computing machines so in general we'd like to process multiple images all at once
     # shape = (1, 3, H, W)
-    img_tensor = transforms.ToTensor()(img).to(device).unsqueeze(0)
+    img_tensor = transforms.ToTensor()(img).to(DEVICE).unsqueeze(0)
     img_tensor.requires_grad = True  # set this to true so that PyTorch will start calculating gradients for img_tensor
 
-    model = Vgg16(requires_grad=False).to(device)  # Instantiate VGG 16 and send it to GPU
+    model = Vgg16(requires_grad=False).to(DEVICE)  # Instantiate VGG 16 and send it to GPU
 
     n_iterations = 10
     learning_rate = 0.3
