@@ -40,7 +40,11 @@ def create_video_from_intermediate_results(config, metadata=None):
     img_pattern = os.path.join(config['dump_dir'], '%6d.jpg')
     fps = 5 if metadata is None else metadata['fps']
     first_frame = 0
-    number_of_frames_to_process = len(valid_frames(config['dump_dir']))  # default - don't trim process every frame
+
+    number_of_frames_to_process = len(valid_frames(config['dump_dir']))
+    if config['create_ouroboros']:
+        number_of_frames_to_process = config['ouroboros_length']
+
     out_file_name = create_video_name(config)
 
     ffmpeg = 'ffmpeg'

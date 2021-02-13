@@ -35,6 +35,7 @@ class SupportedPretrainedWeights(enum.Enum):
 
 
 SUPPORTED_VIDEO_FORMATS = ['.mp4']
+SUPPORTED_IMAGE_FORMATS = ['.jpg', '.png', '.bmp']
 
 
 DATA_DIR_PATH = os.path.join(os.path.dirname(__file__), os.pardir, 'data')

@@ -93,17 +93,31 @@ def deep_dream_static_image(config, img):
     return utils.post_process_numpy_image(img)
 
 
-# Feed the output dreamed image back to the input and repeat
 def deep_dream_video_ouroboros(config):
+    """
+    Feeds the output dreamed image back to the input and repeat
+
+    Name etymology for nerds: https://en.wikipedia.org/wiki/Ouroboros
+
+    """
+    assert any([config['input'].lower().endswith(img_ext) for img_ext in SUPPORTED_IMAGE_FORMATS]), \
+        f'Expected an image, but got {config["input"]}. Supported image formats {SUPPORTED_IMAGE_FORMATS}.'
+
     img_path = os.path.join(INPUT_DATA_PATH, config['input'])
-    # load numpy, [0, 1], channel-last, RGB image, None will cause it to start from the uniform noise [0, 1] image
+    # load numpy, [0, 1] range, channel-last, RGB image
+    # use_noise and consequently None value, will cause it to initialize the frame with uniform, [0, 1] range, noise
     frame = None if config['use_noise'] else utils.load_image(img_path, target_shape=config['img_width'])
 
-    for frame_id in range(config['video_length']):
-        print(f'Dream iteration {frame_id+1}.')
+    for frame_id in range(config['ouroboros_length']):
+        print(f'Ouroboros iteration {frame_id+1}.')
+        # Step 1: apply DeepDream and feed the last iteration's output to the input
         frame = deep_dream_static_image(config, frame)
-        utils.save_and_maybe_display_image(config, frame, name_modifier=frame_id)
-        frame = utils.transform_frame(config, frame)  # transform frame e.g. central zoom, spiral, etc.
+        dump_path = utils.save_and_maybe_display_image(config, frame, name_modifier=frame_id)
+        print(f'Saved frame to: {os.path.relpath(dump_path)}\n')
+
+        # Step 2: transform frame e.g. central zoom, spiral, etc.
+        # Note: this part makes amplifies the psychodelic-like appearance
+        frame = utils.transform_frame(config, frame)
 
     video_utils.create_video_from_intermediate_results(config)
 
@@ -149,7 +163,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # Common params
-    parser.add_argument("--input", type=str, help="Input IMAGE or VIDEO name that will be used for dreaming", default='one_second_clip.mp4')
+    parser.add_argument("--input", type=str, help="Input IMAGE or VIDEO name that will be used for dreaming", default='figures.jpg')
     parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
     parser.add_argument("--model", choices=SupportedModels, help="Neural network (model) to use for dreaming", default=SupportedModels.VGG16_EXPERIMENTAL)
     parser.add_argument("--pretrained_weights", choices=SupportedPretrainedWeights, help="Pretrained weights to use for the above model", default=SupportedPretrainedWeights.IMAGENET)
@@ -163,7 +177,7 @@ if __name__ == "__main__":
 
     # deep_dream_video_ouroboros specific arguments (ignore for other 2 functions)
     parser.add_argument("--create_ouroboros", action='store_true', help="Create Ouroboros video (default False)")
-    parser.add_argument("--video_length", type=int, help="Number of video frames to produce for ouroboros", default=30)
+    parser.add_argument("--ouroboros_length", type=int, help="Number of video frames in ouroboros video", default=30)
     parser.add_argument("--frame_transform", choices=TRANSFORMS,
                         help="Transform used to transform the output frame and feed it back to the network input",
                         default=TRANSFORMS.ZOOM_ROTATE)
@@ -186,15 +200,15 @@ if __name__ == "__main__":
     config['dump_dir'] = os.path.join(config['dump_dir'], f'{config["model"].name}_{config["pretrained_weights"].name}')
     config['input'] = os.path.basename(config['input'])  # handle absolute and relative paths
 
-    # Create a static DeepDream image
-    if any([config['input'].endswith(video_ext) for video_ext in SUPPORTED_VIDEO_FORMATS]):  # only support mp4 atm
-        deep_dream_video(config)
-
-    # Create a blended DeepDream video
-    elif config['create_ouroboros']:
+    # Create Ouroboros video (feeding neural network's output to it's input)
+    if config['create_ouroboros']:
         deep_dream_video_ouroboros(config)
 
-    else:  # Create Ouroboros video (feeding neural network's output to it's input)
+    # Create a blended DeepDream video
+    elif any([config['input'].endswith(video_ext) for video_ext in SUPPORTED_VIDEO_FORMATS]):  # only support mp4 atm
+        deep_dream_video(config)
+
+    else:  # Create a static DeepDream image
         img = deep_dream_static_image(config, img=None)  # img=None -> will be loaded inside of deep_dream_static_image
         utils.save_and_maybe_display_image(config, img)
 
