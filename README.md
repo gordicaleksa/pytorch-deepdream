@@ -1,6 +1,9 @@
 ## Deep Dream :computer: + :ocean::zzz: = :heart:
 This repo contains PyTorch implementation of the Deep Dream algorithm (:link: blog by [Mordvintstev et al.](https://ai.googleblog.com/2015/06/inceptionism-going-deeper-into-neural.html)).
 
+**Important note: I just added Jupyter notebook and a full command line support! 
+The project will go through another round of refactoring tomorrow (February, 14th, 21).**
+
 And it will give you the power to create these weird, psychedelic-looking images:
 
 <p align="center">
