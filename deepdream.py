@@ -103,6 +103,9 @@ def deep_dream_video_ouroboros(config):
     assert any([config['input'].lower().endswith(img_ext) for img_ext in SUPPORTED_IMAGE_FORMATS]), \
         f'Expected an image, but got {config["input"]}. Supported image formats {SUPPORTED_IMAGE_FORMATS}.'
 
+    print(f'Creating ouroboros video with {config["ouroboros_length"]} frames and {config["frame_transform"]} frame transform.')
+    print('*' * 80, '\n')
+
     img_path = os.path.join(INPUT_DATA_PATH, config['input'])
     # load numpy, [0, 1] range, channel-last, RGB image
     # use_noise and consequently None value, will cause it to initialize the frame with uniform, [0, 1] range, noise
@@ -178,9 +181,9 @@ if __name__ == "__main__":
     # deep_dream_video_ouroboros specific arguments (ignore for other 2 functions)
     parser.add_argument("--create_ouroboros", action='store_true', help="Create Ouroboros video (default False)")
     parser.add_argument("--ouroboros_length", type=int, help="Number of video frames in ouroboros video", default=30)
-    parser.add_argument("--frame_transform", choices=TRANSFORMS,
+    parser.add_argument("--frame_transform", choices=[t.name for t in TRANSFORMS],
                         help="Transform used to transform the output frame and feed it back to the network input",
-                        default=TRANSFORMS.ZOOM_ROTATE)
+                        default=TRANSFORMS.ZOOM_ROTATE.name)
 
     # deep_dream_video specific arguments (ignore for other 2 functions)
     parser.add_argument("--blend", type=float, help="Blend coefficient for video creation", default=0.85)
