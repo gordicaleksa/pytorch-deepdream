@@ -64,20 +64,23 @@ def post_process_numpy_image(dump_img):
 
 
 def pytorch_input_adapter(img, device):
+    # shape = (1, 3, H, W)
     tensor = transforms.ToTensor()(img).to(device).unsqueeze(0)
     tensor.requires_grad = True
     return tensor
 
 
-def pytorch_output_adapter(img):
-    return np.moveaxis(img.to('cpu').detach().numpy()[0], 0, 2)
+def pytorch_output_adapter(tensor):
+    # todo: first detach, more optimal?
+    # Push to CPU, detach from the computational graph, convert from (1, 3, H, W) into (H, W, 3)
+    return np.moveaxis(tensor.to('cpu').detach().numpy()[0], 0, 2)
 
 
 def build_image_name(config):
-    input_name = os.path.basename(config['input']).split('.')[0] if config['use_noise'] is False else 'rand_noise'
+    input_name = 'rand_noise' if config['use_noise'] else config['input'].split('.')[0]
     layers = '_'.join(config['layers_to_use'])
     # Looks awful but makes the creation process transparent for other creators
-    img_name = f'{input_name}_width_{config["img_width"]}_model_{config["model_name"]}_{config["pretrained_weights"]}_{layers}_pyrsize_{config["pyramid_size"]}_pyrratio_{config["pyramid_ratio"]}_iter_{config["num_gradient_ascent_iterations"]}_lr_{config["lr"]}_shift_{config["spatial_shift_size"]}.jpg'
+    img_name = f'{input_name}_width_{config["img_width"]}_model_{config["model_name"]}_{config["pretrained_weights"]}_{layers}_pyrsize_{config["pyramid_size"]}_pyrratio_{config["pyramid_ratio"]}_iter_{config["num_gradient_ascent_iterations"]}_lr_{config["lr"]}_shift_{config["spatial_shift_size"]}_smooth_{config["smoothing_coefficient"]}.jpg'
     return img_name
 
 

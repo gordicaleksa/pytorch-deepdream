@@ -129,9 +129,10 @@ Linear blending just combines the current frame with the last one so as to reduc
 
 ## Setup
 
+1. `git clone https://github.com/gordicaleksa/pytorch-deepdream`
 1. Open Anaconda Prompt and navigate into project directory `cd path_to_repo`
-2. Run `conda env create` (while in project directory)
-3. Run `activate pytorch-deepdream`
+2. Run `conda env create` from project directory (this will create a brand new conda environment).
+3. Run `activate pytorch-deepdream` (for running scripts from your console or setup the interpreter in your IDE)
 
 That's it! It should work out-of-the-box executing environment.yml file which deals with dependencies.
 
@@ -139,13 +140,20 @@ That's it! It should work out-of-the-box executing environment.yml file which de
 
 -----
 
-PyTorch package will pull some version of CUDA with it, but it is highly recommended that you install system-wide CUDA beforehand, mostly because of GPU drivers. I also recommend using Miniconda installer as a way to get conda on your system. 
-
-Follow through points 1 and 2 of [this setup](https://github.com/Petlja/PSIML/blob/master/docs/MachineSetup.md) and use the most up-to-date versions of Miniconda and CUDA/cuDNN.
+PyTorch pip package will come bundled with some version of CUDA/cuDNN with it,
+but it is highly recommended that you install a system-wide CUDA beforehand, mostly because of the GPU drivers. 
+I also recommend using Miniconda installer as a way to get conda on your system.
+Follow through points 1 and 2 of [this setup](https://github.com/Petlja/PSIML/blob/master/docs/MachineSetup.md)
+and use the most up-to-date versions of Miniconda and CUDA/cuDNN for your system.
 
 ## Basic Usage
 
-Important thing to note - whatever image or video you want to use **place it inside the `data/input/` directory.**
+**Note 1:** Whatever image or video you want to use you can simply **place it inside the `data/input/` directory**. <br/>
+You can then just reference your files (images/videos) by their name instead of using absolute/relative paths.
+
+**Note 2:** Command line is fully supported.
+
+---
 
 To create some **static Deep Dream images** run the following command:
 
@@ -153,19 +161,19 @@ To create some **static Deep Dream images** run the following command:
 
 This will use the default settings but you'll immediately get a meaningful result saved to:<br/>
 `data/out-images/VGG16_EXPERIMENTAL_IMAGENET/`<br/>
-The last directory will change depending on the model and pretrained weights you use.
+The directory will change depending on the model and pretrained weights you use.
 
 -----
-To run **Ouroboros** do the following:
+To get the out-of-the-box **Ouroboros** video do the following:
 
 `python deepdream.py --input <img_name> --create_ouroboros`
 
 It will dump the intermediate frames to `data/out-videos/VGG16_EXPERIMENTAL_IMAGENET/` and it will save the final video to `data/out-videos`.
 
 -----
-To run **Deep Dream video** run this:
+To create a **Deep Dream video** run this:
 
-`python deepdream.py --input <video_name>`
+`python deepdream.py --input <mp4 video name>`
 
 It will dump the intermediate frames to `data/out-videos/tmp_out` and it will save the final video to `data/out-videos`.
 
@@ -174,7 +182,7 @@ It will dump the intermediate frames to `data/out-videos/tmp_out` and it will sa
 You'll probably wish to have more control of the output you create - and the code is hopefully self-explanatory to help you do that.
 I'll just summarize the most important params here:
 
-`--model` - choose between VGG 16 (best for high-level features), ResNet 50 (nice for mid-level features), GoogLeNet (low-to-mid features are nice).
+`--model_name` - choose between VGG 16 (best for high-level features), ResNet 50 (nice for mid-level features), GoogLeNet (low-to-mid features are nice).
 AlexNet didn't give me nice results so I haven't used any of it's outputs in this README - if you manage to get it working please create an issue.
 
 `--layers_to_use` - you can use single or multiple layers here just put them in a list like ['relu3_3', 'relu4_3']. <br/>

@@ -142,15 +142,17 @@ def deep_dream_simple(img_path, dump_path):
         No support for: spatial shifting (aka jitter), octaves/image pyramid, clipping, gradient smoothing, etc.
 
         Most of the "code" are comments otherwise it literally takes 15 minutes to write down.
+
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     img = utils.load_image(img_path, target_shape=500)  # load numpy, [0, 1] image
     # Normalize image - VGG 16 and in general Pytorch (torchvision) models were trained like this,
     # so they learned to work with this particular distribution
     img = (img - IMAGENET_MEAN_1) / IMAGENET_STD_1
     # Transform into PyTorch tensor, send to GPU and add dummy batch dimension. Models are expecting it, GPUs are
     # highly parallel computing machines so in general we'd like to process multiple images all at once
-    # (even though here it is just 1)
+    # shape = (1, 3, H, W)
     img_tensor = transforms.ToTensor()(img).to(device).unsqueeze(0)
     img_tensor.requires_grad = True  # set this to true so that PyTorch will start calculating gradients for img_tensor
 
@@ -165,7 +167,8 @@ def deep_dream_simple(img_path, dump_path):
         activations.backward(activations)  # whatever is the biggest activation value make it even bigger
 
         img_tensor_grad = img_tensor.grad.data
-        img_tensor.data += learning_rate * (img_tensor_grad / torch.std(img_tensor_grad))  # gradient ascent
+        smooth_grads = img_tensor_grad / torch.std(img_tensor_grad)
+        img_tensor.data += learning_rate * smooth_grads  # gradient ascent
 
         img_tensor.grad.data.zero_()  # clear the gradients otherwise they would get accumulated
 
@@ -175,8 +178,8 @@ def deep_dream_simple(img_path, dump_path):
     img = (img * IMAGENET_STD_1) + IMAGENET_MEAN_1  # de-normalize
     img = (np.clip(img, 0., 1.) * 255).astype(np.uint8)
 
-    os.makedirs(dump_path, exist_ok=True)
     cv.imwrite(dump_path, img[:, :, ::-1])  # ::-1 because opencv expects BGR (and not RGB) format...
+    print(f'Saved naive deep dream image to {os.path.relpath(dump_path)}')
 
 
 class PLAYGROUND(enum.Enum):
@@ -189,7 +192,7 @@ class PLAYGROUND(enum.Enum):
 
 if __name__ == "__main__":
     # Pick the function you want to play with here
-    playground_fn = PLAYGROUND.GEOMETRIC_TRANSFORMS
+    playground_fn = PLAYGROUND.DEEPDREAM_NAIVE
 
     if playground_fn == PLAYGROUND.GEOMETRIC_TRANSFORMS:
         understand_frame_transform()
@@ -206,9 +209,9 @@ if __name__ == "__main__":
         deep_dream_simple(img_path, dump_path)
 
     elif playground_fn == PLAYGROUND.CREATE_GIF:
+        # change this to a directory where you've saved the frames of interest
         input_frames_dir = os.path.join(DATA_DIR_PATH, 'input')
-        # todo: if name is not passed dinamically figure it out
-        video_utils.create_gif(input_frames_dir, OUT_GIF_PATH)
+        video_utils.create_gif(input_frames_dir, os.path.join(OUT_GIF_PATH, 'default.gif'))
 
     else:
         raise Exception(f'{playground_fn} not supported!')

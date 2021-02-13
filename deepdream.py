@@ -22,32 +22,37 @@ import utils.video_utils as video_utils
 
 # layer.backward(layer) <- original implementation did it like this it's equivalent to MSE(reduction='sum')/2
 def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
+    # Step 0: Feed forward pass
     out = model(input_tensor)
-    # step1: Grab activations/feature maps of interest
+
+    # Step 1: Grab activations/feature maps of interest
     activations = [out[layer_id_to_use] for layer_id_to_use in layer_ids_to_use]
 
-    # step2: Calculate loss over activations
+    # Step 2: Calculate loss over activations
     losses = []
     for layer_activation in activations:
         # torch.norm(torch.flatten(layer_activation), p=2) for p=2 => L2 loss; for p=1 => L1 loss. MSE works really good
+        # using torch.zeros_like as if we wanted to make activations as small as possible but we'll do gradient ascent
+        # and that will cause it to actually amplify whatever the network "sees" thus yielding the DeepDream look
         loss_component = torch.nn.MSELoss(reduction='mean')(layer_activation, torch.zeros_like(layer_activation))
         losses.append(loss_component)
 
     loss = torch.mean(torch.stack(losses))
     loss.backward()
 
-    # step3: Process image gradients (smoothing + normalization)
+    # Step 3: Process image gradients (smoothing + normalization)
     grad = input_tensor.grad.data
 
     sigma = ((iteration + 1) / config['num_gradient_ascent_iterations']) * 2.0 + config['smoothing_coefficient']
     smooth_grad = utils.CascadeGaussianSmoothing(KERNEL_SIZE, sigma)(grad)  # applies 3 Gaussian kernels
 
     g_norm = torch.std(smooth_grad)  # g_norm = torch.mean(torch.abs(smooth_grad)) <- other option std works better
+    smooth_grad = smooth_grad / g_norm
 
-    # step4: Update image using the calculated gradients (gradient ascent step)
-    input_tensor.data += config['lr'] * (smooth_grad / g_norm)
+    # Step 4: Update image using the calculated gradients (gradient ascent step)
+    input_tensor.data += config['lr'] * smooth_grad
 
-    # step5: Clear gradients and clamp the data (otherwise values would explode to +- "infinity")
+    # Step 5: Clear gradients and clamp the data (otherwise values would explode to +- "infinity")
     input_tensor.grad.data.zero_()
     input_tensor.data = torch.max(torch.min(input_tensor, UPPER_IMAGE_BOUND), LOWER_IMAGE_BOUND)
 
@@ -61,11 +66,12 @@ def deep_dream_static_image(config, img):
     except Exception as e:  # making sure you set the correct layer name for this specific model
         print(f'Invalid layer names {[layer_name for layer_name in config["layers_to_use"]]}.')
         print(f'Available layers for model {config["model_name"]} are {model.layer_names}.')
-        exit(0)
+        return
 
-    if img is None:  # load either image or start from pure noise image
+    if img is None:  # load either the provided image or start from a pure noise image
         img_path = os.path.join(INPUT_DATA_PATH, config['input'])
-        img = utils.load_image(img_path, target_shape=config['img_width'])  # load numpy, [0, 1], channel-last, RGB image
+        # load a numpy, [0, 1] range, channel-last, RGB image
+        img = utils.load_image(img_path, target_shape=config['img_width'])
         if config['use_noise']:
             shape = img.shape
             img = np.random.uniform(low=0.0, high=1.0, size=shape).astype(np.float32)
@@ -216,5 +222,6 @@ if __name__ == "__main__":
 
     else:  # Create a static DeepDream image
         img = deep_dream_static_image(config, img=None)  # img=None -> will be loaded inside of deep_dream_static_image
-        utils.save_and_maybe_display_image(config, img)
+        dump_path = utils.save_and_maybe_display_image(config, img)
+        print(f'Saved DeepDream static image to: {os.path.relpath(dump_path)}\n')
 
