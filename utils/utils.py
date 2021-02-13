@@ -77,7 +77,7 @@ def build_image_name(config):
     input_name = os.path.basename(config['input']).split('.')[0] if config['use_noise'] is False else 'rand_noise'
     layers = '_'.join(config['layers_to_use'])
     # Looks awful but makes the creation process transparent for other creators
-    img_name = f'{input_name}_width_{config["img_width"]}_model_{config["model"].name}_{config["pretrained_weights"].name}_{layers}_pyrsize_{config["pyramid_size"]}_pyrratio_{config["pyramid_ratio"]}_iter_{config["num_gradient_ascent_iterations"]}_lr_{config["lr"]}_shift_{config["spatial_shift_size"]}.jpg'
+    img_name = f'{input_name}_width_{config["img_width"]}_model_{config["model_name"]}_{config["pretrained_weights"]}_{layers}_pyrsize_{config["pyramid_size"]}_pyrratio_{config["pyramid_ratio"]}_iter_{config["num_gradient_ascent_iterations"]}_lr_{config["lr"]}_shift_{config["spatial_shift_size"]}.jpg'
     return img_name
 
 
@@ -120,15 +120,15 @@ def linear_blend(img1, img2, alpha=0.5):
 
 
 def fetch_and_prepare_model(model_type, pretrained_weights, device):
-    if model_type == SupportedModels.VGG16:
+    if model_type == SupportedModels.VGG16.name:
         model = Vgg16(pretrained_weights, requires_grad=False, show_progress=True).to(device)
-    elif model_type == SupportedModels.VGG16_EXPERIMENTAL:
+    elif model_type == SupportedModels.VGG16_EXPERIMENTAL.name:
         model = Vgg16Experimental(pretrained_weights, requires_grad=False, show_progress=True).to(device)
-    elif model_type == SupportedModels.GOOGLENET:
+    elif model_type == SupportedModels.GOOGLENET.name:
         model = GoogLeNet(pretrained_weights, requires_grad=False, show_progress=True).to(device)
-    elif model_type == SupportedModels.RESNET50:
+    elif model_type == SupportedModels.RESNET50.name:
         model = ResNet50(pretrained_weights, requires_grad=False, show_progress=True).to(device)
-    elif model_type == SupportedModels.ALEXNET:
+    elif model_type == SupportedModels.ALEXNET.name:
         model = AlexNet(pretrained_weights, requires_grad=False, show_progress=True).to(device)
     else:
         raise Exception('Model not yet supported.')

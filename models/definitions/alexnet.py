@@ -14,7 +14,7 @@ class AlexNet(torch.nn.Module):
     """Only those layers are exposed which have already proven to work nicely."""
     def __init__(self, pretrained_weights, requires_grad=False, show_progress=False):
         super().__init__()
-        if pretrained_weights == SupportedPretrainedWeights.IMAGENET:
+        if pretrained_weights == SupportedPretrainedWeights.IMAGENET.name:
             alexnet = models.alexnet(pretrained=True, progress=show_progress).eval()
         else:
             alexnet = models.alexnet(pretrained=False, progress=show_progress).eval()

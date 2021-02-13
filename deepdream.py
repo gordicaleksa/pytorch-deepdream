@@ -55,12 +55,12 @@ def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
 def deep_dream_static_image(config, img):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # checking whether you have a GPU
 
-    model = utils.fetch_and_prepare_model(config['model'], config['pretrained_weights'], device)
+    model = utils.fetch_and_prepare_model(config['model_name'], config['pretrained_weights'], device)
     try:
         layer_ids_to_use = [model.layer_names.index(layer_name) for layer_name in config['layers_to_use']]
     except Exception as e:  # making sure you set the correct layer name for this specific model
-        print('Invalid layer name!')
-        print(f'Available layers for model {config["model"].name} are {model.layer_names}.')
+        print(f'Invalid layer names {[layer_name for layer_name in config["layers_to_use"]]}.')
+        print(f'Available layers for model {config["model_name"]} are {model.layer_names}.')
         exit(0)
 
     if img is None:  # load either image or start from pure noise image
@@ -116,7 +116,7 @@ def deep_dream_video_ouroboros(config):
         # Step 1: apply DeepDream and feed the last iteration's output to the input
         frame = deep_dream_static_image(config, frame)
         dump_path = utils.save_and_maybe_display_image(config, frame, name_modifier=frame_id)
-        print(f'Saved frame to: {os.path.relpath(dump_path)}\n')
+        print(f'Saved ouroboros frame to: {os.path.relpath(dump_path)}\n')
 
         # Step 2: transform frame e.g. central zoom, spiral, etc.
         # Note: this part makes amplifies the psychodelic-like appearance
@@ -152,7 +152,8 @@ def deep_dream_video(config):
 
         # Step 4: save the frame and keep the reference
         last_img = dreamed_frame
-        utils.save_and_maybe_display_image(config, dreamed_frame, name_modifier=frame_id)
+        dump_path = utils.save_and_maybe_display_image(config, dreamed_frame, name_modifier=frame_id)
+        print(f'Saved DeepDream frame to: {os.path.relpath(dump_path)}\n')
 
     video_utils.create_video_from_intermediate_results(config, metadata)
 
@@ -168,9 +169,11 @@ if __name__ == "__main__":
     # Common params
     parser.add_argument("--input", type=str, help="Input IMAGE or VIDEO name that will be used for dreaming", default='figures.jpg')
     parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
-    parser.add_argument("--model", choices=SupportedModels, help="Neural network (model) to use for dreaming", default=SupportedModels.VGG16_EXPERIMENTAL)
-    parser.add_argument("--pretrained_weights", choices=SupportedPretrainedWeights, help="Pretrained weights to use for the above model", default=SupportedPretrainedWeights.IMAGENET)
-    parser.add_argument("--layers_to_use", type=str, help="Layer whose activations we should maximize while dreaming", default=['relu4_3'])
+    parser.add_argument("--layers_to_use", type=str, nargs='+', help="Layer whose activations we should maximize while dreaming", default=['relu4_3'])
+    parser.add_argument("--model_name", choices=[m.name for m in SupportedModels],
+                        help="Neural network (model) to use for dreaming", default=SupportedModels.VGG16_EXPERIMENTAL.name)
+    parser.add_argument("--pretrained_weights", choices=[pw.name for pw in SupportedPretrainedWeights],
+                        help="Pretrained weights to use for the above model", default=SupportedPretrainedWeights.IMAGENET.name)
 
     # Main params for experimentation (especially pyramid_size and pyramid_ratio)
     parser.add_argument("--pyramid_size", type=int, help="Number of images in an image pyramid", default=4)
@@ -200,7 +203,7 @@ if __name__ == "__main__":
     for arg in vars(args):
         config[arg] = getattr(args, arg)
     config['dump_dir'] = OUT_VIDEOS_PATH if config['create_ouroboros'] else OUT_IMAGES_PATH
-    config['dump_dir'] = os.path.join(config['dump_dir'], f'{config["model"].name}_{config["pretrained_weights"].name}')
+    config['dump_dir'] = os.path.join(config['dump_dir'], f'{config["model_name"]}_{config["pretrained_weights"]}')
     config['input'] = os.path.basename(config['input'])  # handle absolute and relative paths
 
     # Create Ouroboros video (feeding neural network's output to it's input)

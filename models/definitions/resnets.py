@@ -15,9 +15,9 @@ class ResNet50(torch.nn.Module):
 
     def __init__(self, pretrained_weights, requires_grad=False, show_progress=False):
         super().__init__()
-        if pretrained_weights == SupportedPretrainedWeights.IMAGENET:
+        if pretrained_weights == SupportedPretrainedWeights.IMAGENET.name:
             resnet50 = models.resnet50(pretrained=True, progress=show_progress).eval()
-        elif pretrained_weights == SupportedPretrainedWeights.PLACES_365:
+        elif pretrained_weights == SupportedPretrainedWeights.PLACES_365.name:
             resnet50 = models.resnet50(pretrained=False, progress=show_progress).eval()
 
             binaries_dir_path = os.path.join(os.path.dirname(__file__), os.pardir, 'binaries')

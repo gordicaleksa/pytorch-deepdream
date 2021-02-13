@@ -23,7 +23,7 @@ def create_video_name(config):
     prefix = '' if config['input'].endswith('.mp4') else 'ouroboros_'
 
     input_name = os.path.basename(config['input']).split('.')[0]
-    model_name = config['model'].name
+    model_name = config['model_name']
     blend_info = 'no_blend' if config['blend'] is None else f'blend_{config["blend"]}'
     if config['input'].endswith('.mp4'):
         blend_info = ''  # blending is used only for Ouroboros
