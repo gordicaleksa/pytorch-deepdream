@@ -64,7 +64,7 @@ def deep_dream_static_image(config, img):
         exit(0)
 
     if img is None:  # load either image or start from pure noise image
-        img_path = os.path.join(config['inputs_path'], config['input'])
+        img_path = os.path.join(INPUT_DATA_PATH, config['input'])
         img = utils.load_image(img_path, target_shape=config['img_width'])  # load numpy, [0, 1], channel-last, RGB image
         if config['use_noise']:
             shape = img.shape
@@ -95,41 +95,47 @@ def deep_dream_static_image(config, img):
 
 # Feed the output dreamed image back to the input and repeat
 def deep_dream_video_ouroboros(config):
-    img_path = os.path.join(config['inputs_path'], config['input'])
+    img_path = os.path.join(INPUT_DATA_PATH, config['input'])
     # load numpy, [0, 1], channel-last, RGB image, None will cause it to start from the uniform noise [0, 1] image
     frame = None if config['use_noise'] else utils.load_image(img_path, target_shape=config['img_width'])
 
     for frame_id in range(config['video_length']):
         print(f'Dream iteration {frame_id+1}.')
         frame = deep_dream_static_image(config, frame)
-        utils.save_and_maybe_display_image(config, frame, should_display=config['should_display'], name_modifier=frame_id)
+        utils.save_and_maybe_display_image(config, frame, name_modifier=frame_id)
         frame = utils.transform_frame(config, frame)  # transform frame e.g. central zoom, spiral, etc.
 
     video_utils.create_video_from_intermediate_results(config)
 
 
 def deep_dream_video(config):
-    video_path = os.path.join(config['inputs_path'], config['input'])
-    tmp_input_dir = os.path.join(config['out_videos_path'], 'tmp_input')
-    tmp_output_dir = os.path.join(config['out_videos_path'], 'tmp_out')
+    video_path = os.path.join(INPUT_DATA_PATH, config['input'])
+    tmp_input_dir = os.path.join(OUT_VIDEOS_PATH, 'tmp_input')
+    tmp_output_dir = os.path.join(OUT_VIDEOS_PATH, 'tmp_out')
     config['dump_dir'] = tmp_output_dir
     os.makedirs(tmp_input_dir, exist_ok=True)
     os.makedirs(tmp_output_dir, exist_ok=True)
 
-    metadata = video_utils.dump_frames(video_path, tmp_input_dir)
+    metadata = video_utils.extract_frames(video_path, tmp_input_dir)
 
     last_img = None
     for frame_id, frame_name in enumerate(sorted(os.listdir(tmp_input_dir))):
+        # Step 1: load the video frame
         print(f'Processing frame {frame_id}')
         frame_path = os.path.join(tmp_input_dir, frame_name)
         frame = utils.load_image(frame_path, target_shape=config['img_width'])
+
+        # Step 2: potentially blend it with the last frame
         if config['blend'] is not None and last_img is not None:
-            # 1.0 - get only the current frame, 0.5 - combine with last dreamed frame and stabilize the video
+            # blend: 1.0 - use the current frame, 0.0 - use the last frame, everything in between will blend the two
             frame = utils.linear_blend(last_img, frame, config['blend'])
 
+        # Step 3: Send the blended frame to some good old DeepDreaming
         dreamed_frame = deep_dream_static_image(config, frame)
+
+        # Step 4: save the frame and keep the reference
         last_img = dreamed_frame
-        utils.save_and_maybe_display_image(config, dreamed_frame, should_display=config['should_display'], name_modifier=frame_id)
+        utils.save_and_maybe_display_image(config, dreamed_frame, name_modifier=frame_id)
 
     video_utils.create_video_from_intermediate_results(config, metadata)
 
@@ -138,21 +144,12 @@ def deep_dream_video(config):
 
 
 if __name__ == "__main__":
-    #
-    # Fixed args - don't change these unless you have a good reason
-    #
-    inputs_path = os.path.join(os.path.dirname(__file__), 'data', 'input')
-    out_images_path = os.path.join(os.path.dirname(__file__), 'data', 'out-images')
-    out_videos_path = os.path.join(os.path.dirname(__file__), 'data', 'out-videos')
-    os.makedirs(out_images_path, exist_ok=True)
-    os.makedirs(out_videos_path, exist_ok=True)
 
-    #
-    # Modifiable args - feel free to play with these (only a small subset is exposed by design to avoid cluttering)
-    #
+    # Only a small subset is exposed by design to avoid cluttering
     parser = argparse.ArgumentParser()
+
     # Common params
-    parser.add_argument("--input", type=str, help="Input IMAGE or VIDEO name that will be used for dreaming", default='figures.jpg')
+    parser.add_argument("--input", type=str, help="Input IMAGE or VIDEO name that will be used for dreaming", default='one_second_clip.mp4')
     parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
     parser.add_argument("--model", choices=SupportedModels, help="Neural network (model) to use for dreaming", default=SupportedModels.VGG16_EXPERIMENTAL)
     parser.add_argument("--pretrained_weights", choices=SupportedPretrainedWeights, help="Pretrained weights to use for the above model", default=SupportedPretrainedWeights.IMAGENET)
@@ -165,38 +162,39 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, help="Learning rate i.e. step size in gradient ascent", default=0.09)
 
     # deep_dream_video_ouroboros specific arguments (ignore for other 2 functions)
-    parser.add_argument("--is_video", type=bool, help="Create DeepDream video - default is DeepDream static image", default=False)
+    parser.add_argument("--create_ouroboros", action='store_true', help="Create Ouroboros video (default False)")
     parser.add_argument("--video_length", type=int, help="Number of video frames to produce for ouroboros", default=30)
-    parser.add_argument("--frame_transform", choices=SupportedTransforms,
+    parser.add_argument("--frame_transform", choices=TRANSFORMS,
                         help="Transform used to transform the output frame and feed it back to the network input",
-                        default=SupportedTransforms.ZOOM_ROTATE)
+                        default=TRANSFORMS.ZOOM_ROTATE)
 
     # deep_dream_video specific arguments (ignore for other 2 functions)
     parser.add_argument("--blend", type=float, help="Blend coefficient for video creation", default=0.85)
 
     # You usually won't need to change these as often
-    parser.add_argument("--should_display", type=bool, help="Display intermediate dreaming results", default=False)
+    parser.add_argument("--should_display", action='store_true', help="Display intermediate dreaming results (default False)")
     parser.add_argument("--spatial_shift_size", type=int, help='Number of pixels to randomly shift image before grad ascent', default=32)
     parser.add_argument("--smoothing_coefficient", type=float, help='Directly controls standard deviation for gradient smoothing', default=0.5)
-    parser.add_argument("--use_noise", type=bool, help="Use noise as a starting point instead of input image", default=False)
+    parser.add_argument("--use_noise", action='store_true', help="Use noise as a starting point instead of input image (default False)")
     args = parser.parse_args()
 
-    # Wrapping configuration into a dictionary - keeping things clean
+    # Wrapping configuration into a dictionary
     config = dict()
     for arg in vars(args):
         config[arg] = getattr(args, arg)
-    config['inputs_path'] = inputs_path
-    config['out_images_path'] = out_images_path
-    config['out_videos_path'] = out_videos_path
-    config['dump_dir'] = config['out_videos_path'] if config['is_video'] else config['out_images_path']
+    config['dump_dir'] = OUT_VIDEOS_PATH if config['create_ouroboros'] else OUT_IMAGES_PATH
     config['dump_dir'] = os.path.join(config['dump_dir'], f'{config["model"].name}_{config["pretrained_weights"].name}')
+    config['input'] = os.path.basename(config['input'])  # handle absolute and relative paths
 
-    # DeepDream algorithm in 3 flavours: static image, video and ouroboros (feeding net output to it's input)
+    # Create a static DeepDream image
     if any([config['input'].endswith(video_ext) for video_ext in SUPPORTED_VIDEO_FORMATS]):  # only support mp4 atm
         deep_dream_video(config)
-    elif config['is_video']:
+
+    # Create a blended DeepDream video
+    elif config['create_ouroboros']:
         deep_dream_video_ouroboros(config)
-    else:
+
+    else:  # Create Ouroboros video (feeding neural network's output to it's input)
         img = deep_dream_static_image(config, img=None)  # img=None -> will be loaded inside of deep_dream_static_image
-        utils.save_and_maybe_display_image(config, img, should_display=config['should_display'])
+        utils.save_and_maybe_display_image(config, img)
 

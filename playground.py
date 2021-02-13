@@ -1,10 +1,12 @@
 """
     This file serves as a playground for understanding some of the concepts used
     in the development of the DeepDream algorithm.
+
 """
 
 import time
 import os
+import enum
 
 
 import numpy as np
@@ -15,10 +17,9 @@ import cv2 as cv
 from torchvision import transforms
 
 
-from utils.constants import IMAGENET_MEAN_1, IMAGENET_STD_1
+from utils.constants import *
 import utils.utils as utils
 import utils.video_utils as video_utils
-from deepdream import gradient_ascent
 from models.definitions.vggs import Vgg16
 
 
@@ -82,9 +83,8 @@ def understand_frame_transform():
 
 
 def understand_blend():
-    inputs_path = os.path.join(os.path.dirname(__file__), 'data', 'input')
-    img1 = utils.load_image(os.path.join(inputs_path, 'figures.jpg'), (500, 500))
-    img2 = utils.load_image(os.path.join(inputs_path, 'cloud.jpg'), (500, 500))
+    img1 = utils.load_image(os.path.join(INPUT_DATA_PATH, 'figures.jpg'), (500, 500))
+    img2 = utils.load_image(os.path.join(INPUT_DATA_PATH, 'cloud.jpg'), (500, 500))
 
     for alpha in np.arange(0, 1.2, 0.2):
         blend = img1 + alpha * (img2 - img1)  # This is how PIL's blend works simple linear interpolation
@@ -179,18 +179,37 @@ def deep_dream_simple(img_path, dump_path):
     cv.imwrite(dump_path, img[:, :, ::-1])  # ::-1 because opencv expects BGR (and not RGB) format...
 
 
+class PLAYGROUND(enum.Enum):
+    GEOMETRIC_TRANSFORMS = 0,
+    BLEND = 1,
+    PT_GRADIENTS = 2,
+    DEEPDREAM_NAIVE = 3,
+    CREATE_GIF = 4
+
+
 if __name__ == "__main__":
+    # Pick the function you want to play with here
+    playground_fn = PLAYGROUND.GEOMETRIC_TRANSFORMS
 
-    print('Uncomment the concept you want to understand.')
+    if playground_fn == PLAYGROUND.GEOMETRIC_TRANSFORMS:
+        understand_frame_transform()
 
-    # understand_frame_transform()
+    elif playground_fn == PLAYGROUND.BLEND:
+        understand_blend()
 
-    # understand_blend()
+    elif playground_fn == PLAYGROUND.PT_GRADIENTS:
+        understand_pytorch_gradients()
 
-    # understand_pytorch_gradients()
+    elif playground_fn == PLAYGROUND.DEEPDREAM_NAIVE:
+        img_path = os.path.join(INPUT_DATA_PATH, 'figures.jpg')
+        dump_path = os.path.join(OUT_IMAGES_PATH, 'simple.jpg')
+        deep_dream_simple(img_path, dump_path)
 
-    # img_path = os.path.join(os.path.dirname(__file__), 'data', 'input', 'figures.jpg')
-    # dump_path = os.path.join(os.path.dirname(__file__), 'data', 'out-images', 'simple.jpg')
-    # deep_dream_simple(img_path, dump_path)
+    elif playground_fn == PLAYGROUND.CREATE_GIF:
+        input_frames_dir = os.path.join(DATA_DIR_PATH, 'input')
+        # todo: if name is not passed dinamically figure it out
+        video_utils.create_gif(input_frames_dir, OUT_GIF_PATH)
 
-    # video_utils.create_gif(input_frames_dir, out_path)
+    else:
+        raise Exception(f'{playground_fn} not supported!')
+

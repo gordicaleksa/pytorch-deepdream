@@ -6,6 +6,7 @@ import re
 
 import cv2 as cv
 import imageio
+from .constants import *
 
 
 # Return frame names that follow the 6 digit pattern and have .jpg extension
@@ -23,9 +24,9 @@ def create_video_name(config):
 
     input_name = os.path.basename(config['input']).split('.')[0]
     model_name = config['model'].name
-    blend_info = 'blend_none' if config['blend'] is None else f'blend_{config["blend"]}'
+    blend_info = 'no_blend' if config['blend'] is None else f'blend_{config["blend"]}'
     if config['input'].endswith('.mp4'):
-        blend_info = ''  # Not used for ouroboros
+        blend_info = ''  # blending is used only for Ouroboros
     infix = f'{input_name}_width_{str(config["img_width"])}_model_{model_name}_{blend_info}'
 
     suffix = '.mp4'
@@ -48,25 +49,27 @@ def create_video_from_intermediate_results(config, metadata=None):
         trim_video_command = ['-start_number', str(first_frame), '-vframes', str(number_of_frames_to_process)]
         encoding_options = ['-c:v', 'libx264', '-crf', '25', '-pix_fmt', 'yuv420p']
         pad_options = ['-vf', 'pad=ceil(iw/2)*2:ceil(ih/2)*2']  # libx264 won't work for odd dimensions
-        out_video_path = os.path.join(config['out_videos_path'], out_file_name)
-        subprocess.call([ffmpeg, *input_options, *trim_video_command, *encoding_options, *pad_options, out_video_path])
+        less_verbose = ['-loglevel', 'warning']
+        out_video_path = os.path.join(OUT_VIDEOS_PATH, out_file_name)
+        subprocess.call([ffmpeg, *input_options, *trim_video_command, *encoding_options, *pad_options, *less_verbose, out_video_path])
         print(f'Saved video to {out_video_path}.')
         return out_video_path
     else:
         raise Exception(f'{ffmpeg} not found in the system path, aborting.')
 
 
-def dump_frames(video_path, dump_dir):
+def extract_frames(video_path, dump_dir):
     ffmpeg = 'ffmpeg'
-    if shutil.which(ffmpeg):  # if ffmpeg is in system path
+    if shutil.which(ffmpeg):  # if ffmpeg is in the system path
         cap = cv.VideoCapture(video_path)
         fps = int(cap.get(cv.CAP_PROP_FPS))
 
         input_options = ['-i', video_path]
         extract_options = ['-r', str(fps)]
         out_frame_pattern = os.path.join(dump_dir, 'frame_%6d.jpg')
+        less_verbose = ['-loglevel', 'warning']
 
-        subprocess.call([ffmpeg, *input_options, *extract_options, out_frame_pattern])
+        subprocess.call([ffmpeg, *input_options, *extract_options, *less_verbose, out_frame_pattern])
 
         print(f'Dumped frames to {dump_dir}.')
         metadata = {'pattern': out_frame_pattern, 'fps': fps}

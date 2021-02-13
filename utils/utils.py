@@ -81,7 +81,7 @@ def build_image_name(config):
     return img_name
 
 
-def save_and_maybe_display_image(config, dump_img, should_display=True, name_modifier=None):
+def save_and_maybe_display_image(config, dump_img, name_modifier=None):
     assert isinstance(dump_img, np.ndarray), f'Expected numpy array got {type(dump_img)}.'
 
     # step1: figure out the dump dir location
@@ -98,10 +98,11 @@ def save_and_maybe_display_image(config, dump_img, should_display=True, name_mod
         dump_img = (dump_img*255).astype(np.uint8)
 
     # step3: write image to the file system
-    cv.imwrite(os.path.join(dump_dir, dump_img_name), dump_img[:, :, ::-1])  # ::-1 because opencv expects BGR (and not RGB) format...
+    # ::-1 because opencv expects BGR (and not RGB) format...
+    cv.imwrite(os.path.join(dump_dir, dump_img_name), dump_img[:, :, ::-1])
 
-    # step4: maybe display part of the function
-    if should_display:
+    # step4: potentially display/plot the image
+    if config['should_display']:
         plt.imshow(dump_img)
         plt.show()
 
@@ -134,16 +135,16 @@ def fetch_and_prepare_model(model_type, pretrained_weights, device):
 # Didn't want to expose these to the outer API - too much clutter, feel free to tweak params here
 def transform_frame(config, frame):
     h, w = frame.shape[:2]
-    if config['frame_transform'] == SupportedTransforms.ZOOM:
+    if config['frame_transform'] == TRANSFORMS.ZOOM:
         scale = 1.05  # Use this param to (un)zoom
         rotation_matrix = cv.getRotationMatrix2D((w / 2, h / 2), 0, scale)
         frame = cv.warpAffine(frame, rotation_matrix, (w, h))
-    elif config['frame_transform'] == SupportedTransforms.ZOOM_ROTATE:
+    elif config['frame_transform'] == TRANSFORMS.ZOOM_ROTATE:
         deg = 3  # Adjust rotation speed (in [deg/frame])
         scale = 1.1  # Use this to (un)zoom while rotating around image center
         rotation_matrix = cv.getRotationMatrix2D((w / 2, h / 2), deg, scale)
         frame = cv.warpAffine(frame, rotation_matrix, (w, h))
-    elif config['frame_transform'] == SupportedTransforms.TRANSLATE:
+    elif config['frame_transform'] == TRANSFORMS.TRANSLATE:
         tx, ty = [5, 5]
         translation_matrix = np.asarray([[1., 0., tx], [0., 1., ty]])
         frame = cv.warpAffine(frame, translation_matrix, (w, h))

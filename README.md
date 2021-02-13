@@ -158,7 +158,7 @@ The last directory will change depending on the model and pretrained weights you
 -----
 To run **Ouroboros** do the following:
 
-`python deepdream.py --input <img_name> --is_video true`
+`python deepdream.py --input <img_name> --create_ouroboros`
 
 It will dump the intermediate frames to `data/out-videos/VGG16_EXPERIMENTAL_IMAGENET/` and it will save the final video to `data/out-videos`.
 
