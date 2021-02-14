@@ -222,12 +222,16 @@ if __name__ == "__main__":
     config['dump_dir'] = os.path.join(config['dump_dir'], f'{config["model_name"]}_{config["pretrained_weights"]}')
     config['input'] = os.path.basename(config['input'])  # handle absolute and relative paths
 
+    if not os.path.exists(os.path.join(INPUT_DATA_PATH, config['input'])):  # tmp, I should support abs/rel paths
+        print(f'Place the input file in: {INPUT_DATA_PATH}')
+        exit(0)
+
     # Create Ouroboros video (feeding neural network's output to it's input)
     if config['create_ouroboros']:
         deep_dream_video_ouroboros(config)
 
     # Create a blended DeepDream video
-    elif any([config['input'].endswith(video_ext) for video_ext in SUPPORTED_VIDEO_FORMATS]):  # only support mp4 atm
+    elif any([config['input'].lower().endswith(video_ext) for video_ext in SUPPORTED_VIDEO_FORMATS]):  # only support mp4 atm
         deep_dream_video(config)
 
     else:  # Create a static DeepDream image
