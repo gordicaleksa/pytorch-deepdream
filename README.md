@@ -12,7 +12,7 @@ And it will give you the power to create these weird, psychedelic-looking images
 
 Not bad, huh?
 
-I strongly suggest you start with the [Jupyter notebook](https://github.com/gordicaleksa/pytorch-deepdream/blob/master/The%20Annotated%20DeepDream.ipynb) I've created!
+I strongly suggest you start with the [Jupyter notebook](https://github.com/gordicaleksa/pytorch-deepdream/blob/master/The%20Annotated%20DeepDream.ipynb) that I've created!
 
 *Note: it's pretty large, ~10 MBs, so it may take a couple of attempts to load it in the browser here on GitHub.*
 
@@ -37,17 +37,16 @@ So from an input image like the one on the left after "dreaming" we get the imag
 
 Who would have said that neural networks had this creativity hidden inside? :art:
 
-### Why yet another Deep Dream repo?
+#### Why yet another Deep Dream repo?
 
 Most of the original Deep Dream repos were written in **Caffe** and the ones written in PyTorch are usually really hard to read and understand.
-
 This repo is an attempt of making the **cleanest** DeepDream repo that I'm aware of + it's written in **PyTorch!** :heart:
 
 ## Static Image Examples
 
 Here are some examples that you can create using this code!
 
-### Optimizing shallower layers = lower level features
+### Optimizing shallower layers = Amplify low-level features
 
 By using shallower layers of neural networks you'll get lower level patterns (edges, circles, colors, etc.) as the output:
 
@@ -59,7 +58,7 @@ By using shallower layers of neural networks you'll get lower level patterns (ed
 
 Here the first 2 images came from ResNet50 and the last one came from GoogLeNet (both pretrained on ImageNet).
 
-### Optimizing deeper Layers = High level features
+### Optimizing deeper Layers = Amplify high-level features
 
 By using deeper network layers you'll get higher level patterns (eyes, snouts, animal heads):
 
@@ -111,9 +110,9 @@ Make sure to check out the [Jupyter notebook!](https://github.com/gordicaleksa/p
 
 ## Ouroboros Video Examples
 
-Here are some further examples that you can create using this code (**deep_dream_video_ouroboros** function).
+Here are some further examples that you can create using this code!
 
-The idea here is that whatever the network dreams just feed that back to it's input and apply geometric transform.
+The idea here is that whatever the network dreams just feed that back to it's input and apply a geometric transformation.
 
 ### Ouroboros: Zoom transform
 
@@ -171,8 +170,6 @@ and use the most up-to-date versions of Miniconda and CUDA/cuDNN for your system
 Just run `jupyter notebook` from you Anaconda console and it will open up a session in your default browser. <br/>
 Open `The Annotated DeepDream.ipynb` and you're ready to play!
 
----
-
 **Note:** if you get `DLL load failed while importing win32api: The specified module could not be found` <br/>
 Just do `pip uninstall pywin32` and then either `pip install pywin32` or `conda install pywin32` [should fix it](https://github.com/jupyter/notebook/issues/4980)!
 
@@ -186,11 +183,10 @@ Navigate to/activate your env if you're using Anaconda (and I hope you do) and y
 
 ---
 
-Tip:
- * **Place your images/videos inside the `data/input/` directory and you can then just reference
-  your files (images/videos) by their name instead of using absolute/relative paths.**
+**Tip: Place your images/videos inside the `data/input/` directory and you can then just reference 
+your files (images/videos) by their name instead of using absolute/relative paths.**
 
-#### DeepDream images
+### DeepDream images
 
 To create some **static Deep Dream images** run the following command:
 
@@ -202,7 +198,7 @@ This will use the default settings but you'll immediately get a meaningful resul
 
 *Note: the output directory will change depending on the model and pretrained weights you use.*
 
-#### Ouroboros videos
+### Ouroboros videos
 
 To get the out-of-the-box **Ouroboros** 30-frame video do the following:
 
@@ -210,13 +206,15 @@ To get the out-of-the-box **Ouroboros** 30-frame video do the following:
 
 It will dump the intermediate frames to `data/out-videos/VGG16_EXPERIMENTAL_IMAGENET/` and it will save the final video to `data/out-videos`.
 
-#### DeepDream videos
+### DeepDream videos
 
 To create a **Deep Dream video** run this command:
 
 `python deepdream.py --input <mp4 video name>`
 
 It will dump the intermediate frames to `data/out-videos/tmp_out` and it will save the final video to `data/out-videos`.
+
+---
 
 Well, enjoy playing with this project! Here are some additional, beautiful, results:
 
@@ -231,7 +229,7 @@ A GPU with 2+ GBs will be more than enough.
 
 You'll be able to create DeepDream images, Ouroboros and DeepDream videos.
 
-If you don't have a GPU, the code can run on the CPU but somewhat slower (especially for videos).
+If you don't have a GPU, the code will automatically run on the CPU but somewhat slower (especially for videos).
 
 ## Learning material
 
