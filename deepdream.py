@@ -20,7 +20,7 @@ from utils.constants import *
 import utils.video_utils as video_utils
 
 
-# layer.backward(layer) <- original implementation did it like this it's equivalent to MSE(reduction='sum')/2
+# loss.backward(layer) <- original implementation did it like this it's equivalent to MSE(reduction='sum')/2
 def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
     # Step 0: Feed forward pass
     out = model(input_tensor)
@@ -31,9 +31,10 @@ def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
     # Step 2: Calculate loss over activations
     losses = []
     for layer_activation in activations:
-        # torch.norm(torch.flatten(layer_activation), p=2) for p=2 => L2 loss; for p=1 => L1 loss. MSE works really good
+        # Use torch.norm(torch.flatten(layer_activation), p) with p=2 for L2 loss and p=1 for L1 loss.
+        # But I'll use the MSE as it works really good, I didn't notice any serious change when going to L1/L2.
         # using torch.zeros_like as if we wanted to make activations as small as possible but we'll do gradient ascent
-        # and that will cause it to actually amplify whatever the network "sees" thus yielding the DeepDream look
+        # and that will cause it to actually amplify whatever the network "sees" thus yielding the famous DeepDream look
         loss_component = torch.nn.MSELoss(reduction='mean')(layer_activation, torch.zeros_like(layer_activation))
         losses.append(loss_component)
 
@@ -43,11 +44,16 @@ def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
     # Step 3: Process image gradients (smoothing + normalization)
     grad = input_tensor.grad.data
 
+    # Applies 3 Gaussian kernels and thus "blurs" or smoothens the gradients and gives visually more pleasing results
     sigma = ((iteration + 1) / config['num_gradient_ascent_iterations']) * 2.0 + config['smoothing_coefficient']
-    smooth_grad = utils.CascadeGaussianSmoothing(KERNEL_SIZE, sigma)(grad)  # applies 3 Gaussian kernels
+    smooth_grad = utils.CascadeGaussianSmoothing(kernel_size=9, sigma=sigma)(grad)  # "magic number" 9 just works well
 
-    g_norm = torch.std(smooth_grad)  # g_norm = torch.mean(torch.abs(smooth_grad)) <- other option std works better
-    smooth_grad = smooth_grad / g_norm
+    # Normalize the gradients (make them have mean = 0 and std = 1)
+    # I didn't notice any big difference normalizing the mean as well - feel free to experiment
+    g_std = torch.std(smooth_grad)
+    g_mean = torch.mean(smooth_grad)
+    smooth_grad = smooth_grad - g_mean
+    smooth_grad = smooth_grad / g_std
 
     # Step 4: Update image using the calculated gradients (gradient ascent step)
     input_tensor.data += config['lr'] * smooth_grad
@@ -74,7 +80,7 @@ def deep_dream_static_image(config, img):
             shape = img.shape
             img = np.random.uniform(low=0.0, high=1.0, size=shape).astype(np.float32)
 
-    img = utils.preprocess_numpy_img(img)
+    img = utils.pre_process_numpy_img(img)
     base_shape = img.shape[:-1]  # save initial height and width
 
     # Note: simply rescaling the whole result (and not only details, see original implementation) gave me better results
@@ -94,7 +100,7 @@ def deep_dream_static_image(config, img):
 
         img = utils.pytorch_output_adapter(input_tensor)
 
-    return utils.post_process_numpy_image(img)
+    return utils.post_process_numpy_img(img)
 
 
 def deep_dream_video_ouroboros(config):

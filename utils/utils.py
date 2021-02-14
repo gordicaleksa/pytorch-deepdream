@@ -42,25 +42,25 @@ def load_image(img_path, target_shape=None):
     return img
 
 
-def preprocess_numpy_img(img):
+def pre_process_numpy_img(img):
     assert isinstance(img, np.ndarray), f'Expected numpy image got {type(img)}'
 
     img = (img - IMAGENET_MEAN_1) / IMAGENET_STD_1  # normalize image
     return img
 
 
-def post_process_numpy_image(dump_img):
-    assert isinstance(dump_img, np.ndarray), f'Expected numpy image got {type(dump_img)}'
+def post_process_numpy_img(img):
+    assert isinstance(img, np.ndarray), f'Expected numpy image got {type(img)}'
 
-    if dump_img.shape[0] == 3:  # if channel-first format move to channel-last (CHW -> HWC)
-        dump_img = np.moveaxis(dump_img, 0, 2)
+    if img.shape[0] == 3:  # if channel-first format move to channel-last (CHW -> HWC)
+        img = np.moveaxis(img, 0, 2)
 
     mean = IMAGENET_MEAN_1.reshape(1, 1, -1)
     std = IMAGENET_STD_1.reshape(1, 1, -1)
-    dump_img = (dump_img * std) + mean  # de-normalize
-    dump_img = np.clip(dump_img, 0., 1.)
+    img = (img * std) + mean  # de-normalize
+    img = np.clip(img, 0., 1.)  # make sure it's in the [0, 1] range
 
-    return dump_img
+    return img
 
 
 def pytorch_input_adapter(img, device):
@@ -187,7 +187,7 @@ def random_circular_spatial_shift(tensor, h_shift, w_shift, should_undo=False):
 
 class CascadeGaussianSmoothing(nn.Module):
     """
-    Apply gaussian smoothing seperately for each channel (depthwise convolution).
+    Apply gaussian smoothing separately for each channel (depthwise convolution).
 
     Arguments:
         kernel_size (int, sequence): Size of the gaussian kernel.
@@ -197,51 +197,51 @@ class CascadeGaussianSmoothing(nn.Module):
     def __init__(self, kernel_size, sigma):
         super().__init__()
 
-        cascade_coefficients = [0.5, 1.0, 2.0]  # std multipliers
-
-        sigmas = [[coeff * sigma, coeff * sigma] for coeff in cascade_coefficients]  # isotropic Gaussian
-
-        self.pad = int(kernel_size / 2)  # Used to pad the channels so that after applying the kernel we have same size
-
         if isinstance(kernel_size, numbers.Number):
             kernel_size = [kernel_size, kernel_size]
 
-        meshgrids = torch.meshgrid([torch.arange(size, dtype=torch.float32) for size in kernel_size])
+        cascade_coefficients = [0.5, 1.0, 2.0]  # std multipliers
+        sigmas = [[coeff * sigma, coeff * sigma] for coeff in cascade_coefficients]  # isotropic Gaussian
+
+        self.pad = int(kernel_size[0] / 2)  # assure we have the same spatial resolution
 
         # The gaussian kernel is the product of the gaussian function of each dimension.
         kernels = []
+        meshgrids = torch.meshgrid([torch.arange(size, dtype=torch.float32) for size in kernel_size])
         for sigma in sigmas:
-            kernel = 1
-            for size_1d, std_1d, mgrid in zip(kernel_size, sigma, meshgrids):
+            kernel = torch.ones_like(meshgrids[0])
+            for size_1d, std_1d, grid in zip(kernel_size, sigma, meshgrids):
                 mean = (size_1d - 1) / 2
-                kernel *= 1 / (std_1d * math.sqrt(2 * math.pi)) * torch.exp(-((mgrid - mean) / std_1d) ** 2 / 2)
+                kernel *= 1 / (std_1d * math.sqrt(2 * math.pi)) * torch.exp(-((grid - mean) / std_1d) ** 2 / 2)
             kernels.append(kernel)
 
-        prepared_kernels = []
+        gaussian_kernels = []
         for kernel in kernels:
-            # Make sure sum of values in gaussian kernel equals 1.
+            # Normalize - make sure sum of values in gaussian kernel equals 1.
             kernel = kernel / torch.sum(kernel)
-
             # Reshape to depthwise convolutional weight
             kernel = kernel.view(1, 1, *kernel.shape)
-            kernel = kernel.repeat(3, *[1] * (kernel.dim() - 1))
-            kernel = kernel.to('cuda')
-            prepared_kernels.append(kernel)
+            kernel = kernel.repeat(3, 1, 1, 1)
+            kernel = kernel.to(DEVICE)
 
-        self.weight1 = prepared_kernels[0]
-        self.weight2 = prepared_kernels[1]
-        self.weight3 = prepared_kernels[2]
+            gaussian_kernels.append(kernel)
+
+        self.weight1 = gaussian_kernels[0]
+        self.weight2 = gaussian_kernels[1]
+        self.weight3 = gaussian_kernels[2]
         self.conv = F.conv2d
 
     def forward(self, input):
-        """
-        Apply gaussian filter to input.
-        """
         input = F.pad(input, [self.pad, self.pad, self.pad, self.pad], mode='reflect')
-        grad1 = self.conv(input, weight=self.weight1, groups=3)
-        grad2 = self.conv(input, weight=self.weight2, groups=3)
-        grad3 = self.conv(input, weight=self.weight3, groups=3)
-        return grad1 + grad2 + grad3
+
+        # Apply Gaussian kernels depthwise over the input (hence groups equals the number of input channels)
+        # shape = (1, 3, H, W) -> (1, 3, H, W)
+        num_in_channels = input.shape[1]
+        grad1 = self.conv(input, weight=self.weight1, groups=num_in_channels)
+        grad2 = self.conv(input, weight=self.weight2, groups=num_in_channels)
+        grad3 = self.conv(input, weight=self.weight3, groups=num_in_channels)
+
+        return (grad1 + grad2 + grad3) / 3
 
 
 # Not used atm.

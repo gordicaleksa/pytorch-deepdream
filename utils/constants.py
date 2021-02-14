@@ -15,7 +15,6 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # checkin
 
 LOWER_IMAGE_BOUND = torch.tensor((-IMAGENET_MEAN_1 / IMAGENET_STD_1).reshape(1, -1, 1, 1)).to(DEVICE)
 UPPER_IMAGE_BOUND = torch.tensor(((1 - IMAGENET_MEAN_1) / IMAGENET_STD_1).reshape(1, -1, 1, 1)).to(DEVICE)
-KERNEL_SIZE = 9  # "magic number" picked this one as it just works well
 
 
 class TRANSFORMS(enum.Enum):
