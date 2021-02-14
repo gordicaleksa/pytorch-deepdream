@@ -7,6 +7,7 @@ import re
 import cv2 as cv
 import imageio
 from .constants import *
+from .utils import build_image_name
 
 
 # Return frame names that follow the 6 digit pattern and have .jpg extension
@@ -20,18 +21,16 @@ def valid_frames(input_dir):
 
 
 def create_video_name(config):
-    prefix = '' if config['input'].endswith('.mp4') else 'ouroboros_'
+    prefix = 'video_' if config['input'].endswith('.mp4') else 'ouroboros_video_'
 
-    input_name = os.path.basename(config['input']).split('.')[0]
-    model_name = config['model_name']
-    blend_info = 'no_blend' if config['blend'] is None else f'blend_{config["blend"]}'
-    if config['input'].endswith('.mp4'):
-        blend_info = ''  # blending is used only for DeepDream video
-    infix = f'{input_name}_width_{str(config["img_width"])}_fps_{config["fps"]}_model_{model_name}_{blend_info}'
+    infix = build_image_name(config).rsplit('.', 1)[0]  # remove the .jpg suffix
+
+    blend_info = f'blend_{config["blend"]}_' if config['input'].endswith('.mp4') else ''  # not used for Ouroboros
+    video_specific_infix = f'fps_{config["fps"]}_{blend_info}'
 
     suffix = '.mp4'
 
-    video_name = prefix + infix + suffix
+    video_name = prefix + video_specific_infix + infix + suffix
     return video_name
 
 

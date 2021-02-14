@@ -8,6 +8,7 @@
 import os
 import argparse
 import shutil
+import time
 
 
 import numpy as np
@@ -45,6 +46,7 @@ def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
     grad = input_tensor.grad.data
 
     # Applies 3 Gaussian kernels and thus "blurs" or smoothens the gradients and gives visually more pleasing results
+    # sigma is calculated using an arbitrary heuristic feel free to experiment
     sigma = ((iteration + 1) / config['num_gradient_ascent_iterations']) * 2.0 + config['smoothing_coefficient']
     smooth_grad = utils.CascadeGaussianSmoothing(kernel_size=9, sigma=sigma)(grad)  # "magic number" 9 just works well
 
@@ -110,6 +112,7 @@ def deep_dream_video_ouroboros(config):
     Name etymology for nerds: https://en.wikipedia.org/wiki/Ouroboros
 
     """
+    ts = time.time()
     assert any([config['input'].lower().endswith(img_ext) for img_ext in SUPPORTED_IMAGE_FORMATS]), \
         f'Expected an image, but got {config["input"]}. Supported image formats {SUPPORTED_IMAGE_FORMATS}.'
 
@@ -132,6 +135,7 @@ def deep_dream_video_ouroboros(config):
         frame = utils.transform_frame(config, frame)
 
     video_utils.create_video_from_intermediate_results(config)
+    print(f'time elapsed = {time.time()-ts} seconds.')
 
 
 def deep_dream_video(config):

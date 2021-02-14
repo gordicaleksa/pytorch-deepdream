@@ -141,19 +141,25 @@ def fetch_and_prepare_model(model_type, pretrained_weights, device):
 # Didn't want to expose these to the outer API - too much clutter, feel free to tweak params here
 def transform_frame(config, frame):
     h, w = frame.shape[:2]
+    ref_fps = 30  # referent fps, the transformation settings are calibrated for this one
+
     if config['frame_transform'].lower() == TRANSFORMS.ZOOM.name.lower():
-        scale = 1.05  # Use this param to (un)zoom
+        scale = 1.04 * (ref_fps / config['fps'])  # Use this param to (un)zoom
         rotation_matrix = cv.getRotationMatrix2D((w / 2, h / 2), 0, scale)
         frame = cv.warpAffine(frame, rotation_matrix, (w, h))
+
     elif config['frame_transform'].lower() == TRANSFORMS.ZOOM_ROTATE.name.lower():
-        deg = 3  # Adjust rotation speed (in [deg/frame])
-        scale = 1.1  # Use this to (un)zoom while rotating around image center
+        # Arbitrary heuristic keep the degree at 3 degrees/second and scale 1.04/second
+        deg = 1.5 * (ref_fps / config['fps'])  # Adjust rotation speed (in [deg/frame])
+        scale = 1.04 * (ref_fps / config['fps'])  # Use this to (un)zoom while rotating around image center
         rotation_matrix = cv.getRotationMatrix2D((w / 2, h / 2), deg, scale)
         frame = cv.warpAffine(frame, rotation_matrix, (w, h))
+
     elif config['frame_transform'].lower() == TRANSFORMS.TRANSLATE.name.lower():
-        tx, ty = [5, 5]
+        tx, ty = [2 * (ref_fps / config['fps']), 2 * (ref_fps / config['fps'])]
         translation_matrix = np.asarray([[1., 0., tx], [0., 1., ty]])
         frame = cv.warpAffine(frame, translation_matrix, (w, h))
+
     else:
         raise Exception('Transformation not yet supported.')
 

@@ -55,9 +55,14 @@ class Vgg16(torch.nn.Module):
         return out
 
 
-# I've just exposed deeper, nice, layers in this 'experimental' VGG 16 otherwise no difference with the one above.
 class Vgg16Experimental(torch.nn.Module):
-    """Everything exposed so you can play with different combinations for style and content representation"""
+    """
+    Everything exposed so you can play with different layer combinations!
+
+    But because this model has layer 5 exposed, it doesn't allow deep pyramids as VGG16 above - that's the tradeoff.
+    (because the spatial resolution in these deeper layers is the bottleneck for how deep the pyramid can be)
+
+    """
     def __init__(self, pretrained_weights, requires_grad=False, show_progress=False):
         super().__init__()
 
