@@ -258,6 +258,7 @@ def print_deep_dream_video_header(config):
     print(f'Using model layers = {config["layers_to_use"]}')
     print(f'Using lending coefficient = {config["blend"]}.')
     print(f'Video output width = {config["img_width"]}')
+    print(f'fps = {config["fps"]}')
     print('*' * 50, '\n')
 
 
@@ -267,4 +268,5 @@ def print_ouroboros_video_header(config):
     print(f'Using pretrained weights = {config["pretrained_weights"]}')
     print(f'Using model layers = {config["layers_to_use"]}')
     print(f'Video output width = {config["img_width"]}')
+    print(f'fps = {config["fps"]}')
     print('*' * 50, '\n')

@@ -26,8 +26,8 @@ def create_video_name(config):
     model_name = config['model_name']
     blend_info = 'no_blend' if config['blend'] is None else f'blend_{config["blend"]}'
     if config['input'].endswith('.mp4'):
-        blend_info = ''  # blending is used only for Ouroboros
-    infix = f'{input_name}_width_{str(config["img_width"])}_model_{model_name}_{blend_info}'
+        blend_info = ''  # blending is used only for DeepDream video
+    infix = f'{input_name}_width_{str(config["img_width"])}_fps_{config["fps"]}_model_{model_name}_{blend_info}'
 
     suffix = '.mp4'
 
@@ -35,10 +35,10 @@ def create_video_name(config):
     return video_name
 
 
-def create_video_from_intermediate_results(config, metadata=None):
+def create_video_from_intermediate_results(config):
     # save_and_maybe_display_image uses this same format (it's hardcoded there), not adaptive but does the job
     img_pattern = os.path.join(config['dump_dir'], '%6d.jpg')
-    fps = 5 if metadata is None else metadata['fps']
+    fps = config['fps']
     first_frame = 0
 
     number_of_frames_to_process = len(valid_frames(config['dump_dir']))

@@ -143,6 +143,7 @@ def deep_dream_video(config):
     os.makedirs(tmp_output_dir, exist_ok=True)
 
     metadata = video_utils.extract_frames(video_path, tmp_input_dir)
+    config['fps'] = metadata['fps']
     utils.print_deep_dream_video_header(config)
 
     last_img = None
@@ -165,7 +166,7 @@ def deep_dream_video(config):
         dump_path = utils.save_and_maybe_display_image(config, dreamed_frame, name_modifier=frame_id)
         print(f'Saved DeepDream frame to: {os.path.relpath(dump_path)}\n')
 
-    video_utils.create_video_from_intermediate_results(config, metadata)
+    video_utils.create_video_from_intermediate_results(config)
 
     shutil.rmtree(tmp_input_dir)  # remove tmp files
     print(f'Deleted tmp frame dump directory {tmp_input_dir}.')
@@ -194,6 +195,7 @@ if __name__ == "__main__":
     # deep_dream_video_ouroboros specific arguments (ignore for other 2 functions)
     parser.add_argument("--create_ouroboros", action='store_true', help="Create Ouroboros video (default False)")
     parser.add_argument("--ouroboros_length", type=int, help="Number of video frames in ouroboros video", default=30)
+    parser.add_argument("--fps", type=int, help="Number of frames per second", default=30)
     parser.add_argument("--frame_transform", choices=[t.name for t in TRANSFORMS],
                         help="Transform used to transform the output frame and feed it back to the network input",
                         default=TRANSFORMS.ZOOM_ROTATE.name)
