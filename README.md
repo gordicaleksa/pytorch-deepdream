@@ -18,9 +18,9 @@ I strongly suggest you start with the [Jupyter notebook](https://github.com/gord
 
 ## Table of Contents
 * [What is DeepDream?](#what-is-deepdream-algorithm)
-* [Image visualizations and experiments](#static-image-examples)
-* [Ouroboros video examples](#ouroboros-video-examples)
-* [DeepDream video examples](#deepdream-video-examples)
+    * [Image visualizations and experiments](#static-image-examples)
+    * [Ouroboros video examples](#ouroboros-video-examples)
+    * [DeepDream video examples](#deepdream-video-examples)
 * [Setup](#setup)
 * [Usage](#usage)
 * [Hardware requirements](#hardware-requirements)
@@ -83,7 +83,7 @@ Left: **ResNet50-ImageNet** (we can see more animal features) Right: **ResNet50-
 
 ### Impact of increasing the pyramid size
 
-Dreaming is performed on multiple image resolutions stacked "vertically" (we call that an **image pyramid**).
+Dreaming is performed on multiple image resolutions stacked "vertically" (we call this an **image pyramid**).
 
 <p align="center">
 <img src="data/examples/pyramid_size/figures_width_600_model_VGG16_EXPERIMENTAL_IMAGENET_relu4_3_pyrsize_3_pyrratio_1.3_iter_10_lr_0.09_shift_33_resized300.jpg" width="270"/>
@@ -106,7 +106,7 @@ Playing with pyramid ratio has a similar/related effect - the basic idea is that
 
 **Note: you can see the exact params used to create these images encoded into the filename!**
 
-Make sure to check out the [Jupyter notebook!](https://github.com/gordicaleksa/pytorch-deepdream/blob/master/The%20Annotated%20DeepDream.ipynb)
+Make sure to check out the [Jupyter notebook!](https://github.com/gordicaleksa/pytorch-deepdream/blob/master/The%20Annotated%20DeepDream.ipynb), I've explained this thoroughly.
 
 ## Ouroboros Video Examples
 
