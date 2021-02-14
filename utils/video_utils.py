@@ -21,11 +21,11 @@ def valid_frames(input_dir):
 
 
 def create_video_name(config):
-    prefix = 'video_' if config['input'].endswith('.mp4') else 'ouroboros_video_'
+    prefix = 'video_' if config['input_name'].endswith('.mp4') else 'ouroboros_video_'
 
     infix = build_image_name(config).rsplit('.', 1)[0]  # remove the .jpg suffix
 
-    blend_info = f'blend_{config["blend"]}_' if config['input'].endswith('.mp4') else ''  # not used for Ouroboros
+    blend_info = f'blend_{config["blend"]}_' if config['input_name'].endswith('.mp4') else ''  # not used for Ouroboros
     video_specific_infix = f'fps_{config["fps"]}_{blend_info}'
 
     suffix = '.mp4'

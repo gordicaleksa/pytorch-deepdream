@@ -71,13 +71,12 @@ def pytorch_input_adapter(img, device):
 
 
 def pytorch_output_adapter(tensor):
-    # todo: first detach, more optimal?
     # Push to CPU, detach from the computational graph, convert from (1, 3, H, W) into (H, W, 3)
     return np.moveaxis(tensor.to('cpu').detach().numpy()[0], 0, 2)
 
 
 def build_image_name(config):
-    input_name = 'rand_noise' if config['use_noise'] else config['input'].split('.')[0]
+    input_name = 'rand_noise' if config['use_noise'] else config['input_name'].rsplit('.', 1)[0]
     layers = '_'.join(config['layers_to_use'])
     # Looks awful but makes the creation process transparent for other creators
     img_name = f'{input_name}_width_{config["img_width"]}_model_{config["model_name"]}_{config["pretrained_weights"]}_{layers}_pyrsize_{config["pyramid_size"]}_pyrratio_{config["pyramid_ratio"]}_iter_{config["num_gradient_ascent_iterations"]}_lr_{config["lr"]}_shift_{config["spatial_shift_size"]}_smooth_{config["smoothing_coefficient"]}.jpg'
@@ -259,7 +258,7 @@ def create_image_pyramid(img, num_octaves, octave_scale):
 
 
 def print_deep_dream_video_header(config):
-    print(f'Creating a DeepDream video from {config["input"]}, via {config["model_name"]} model.')
+    print(f'Creating a DeepDream video from {config["input_name"]}, via {config["model_name"]} model.')
     print(f'Using pretrained weights = {config["pretrained_weights"]}')
     print(f'Using model layers = {config["layers_to_use"]}')
     print(f'Using lending coefficient = {config["blend"]}.')
@@ -269,10 +268,21 @@ def print_deep_dream_video_header(config):
 
 
 def print_ouroboros_video_header(config):
-    print(f'Creating a {config["ouroboros_length"]}-frame Ouroboros video from {config["input"]}, via {config["model_name"]} model.')
+    print(f'Creating a {config["ouroboros_length"]}-frame Ouroboros video from {config["input_name"]}, via {config["model_name"]} model.')
     print(f'Using {config["frame_transform"]} for the frame transform')
     print(f'Using pretrained weights = {config["pretrained_weights"]}')
     print(f'Using model layers = {config["layers_to_use"]}')
     print(f'Video output width = {config["img_width"]}')
     print(f'fps = {config["fps"]}')
     print('*' * 50, '\n')
+
+
+def parse_input_file(input):
+    # Handle abs/rel paths
+    if os.path.exists(input):
+        return input
+    # If passed only a name and it doesn't exist in the current working dir assume it's in input data dir
+    elif os.path.exists(os.path.join(INPUT_DATA_PATH, input)):
+        return os.path.join(INPUT_DATA_PATH, input)
+    else:
+        raise Exception(f'Input path {input} is not valid.')

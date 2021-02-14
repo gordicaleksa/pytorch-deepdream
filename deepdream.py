@@ -75,7 +75,7 @@ def deep_dream_static_image(config, img):
         return
 
     if img is None:  # load either the provided image or start from a pure noise image
-        img_path = os.path.join(INPUT_DATA_PATH, config['input'])
+        img_path = utils.parse_input_file(config['input'])
         # load a numpy, [0, 1] range, channel-last, RGB image
         img = utils.load_image(img_path, target_shape=config['img_width'])
         if config['use_noise']:
@@ -113,12 +113,12 @@ def deep_dream_video_ouroboros(config):
 
     """
     ts = time.time()
-    assert any([config['input'].lower().endswith(img_ext) for img_ext in SUPPORTED_IMAGE_FORMATS]), \
-        f'Expected an image, but got {config["input"]}. Supported image formats {SUPPORTED_IMAGE_FORMATS}.'
+    assert any([config['input_name'].lower().endswith(img_ext) for img_ext in SUPPORTED_IMAGE_FORMATS]), \
+        f'Expected an image, but got {config["input_name"]}. Supported image formats {SUPPORTED_IMAGE_FORMATS}.'
 
     utils.print_ouroboros_video_header(config)  # print some ouroboros-related metadata to the console
 
-    img_path = os.path.join(INPUT_DATA_PATH, config['input'])
+    img_path = utils.parse_input_file(config['input'])
     # load numpy, [0, 1] range, channel-last, RGB image
     # use_noise and consequently None value, will cause it to initialize the frame with uniform, [0, 1] range, noise
     frame = None if config['use_noise'] else utils.load_image(img_path, target_shape=config['img_width'])
@@ -139,7 +139,7 @@ def deep_dream_video_ouroboros(config):
 
 
 def deep_dream_video(config):
-    video_path = os.path.join(INPUT_DATA_PATH, config['input'])
+    video_path = utils.parse_input_file(config['input'])
     tmp_input_dir = os.path.join(OUT_VIDEOS_PATH, 'tmp_input')
     tmp_output_dir = os.path.join(OUT_VIDEOS_PATH, 'tmp_out')
     config['dump_dir'] = tmp_output_dir
@@ -220,18 +220,14 @@ if __name__ == "__main__":
         config[arg] = getattr(args, arg)
     config['dump_dir'] = OUT_VIDEOS_PATH if config['create_ouroboros'] else OUT_IMAGES_PATH
     config['dump_dir'] = os.path.join(config['dump_dir'], f'{config["model_name"]}_{config["pretrained_weights"]}')
-    config['input'] = os.path.basename(config['input'])  # handle absolute and relative paths
-
-    if not os.path.exists(os.path.join(INPUT_DATA_PATH, config['input'])):  # tmp, I should support abs/rel paths
-        print(f'Place the input file in: {INPUT_DATA_PATH}')
-        exit(0)
+    config['input_name'] = os.path.basename(config['input'])
 
     # Create Ouroboros video (feeding neural network's output to it's input)
     if config['create_ouroboros']:
         deep_dream_video_ouroboros(config)
 
     # Create a blended DeepDream video
-    elif any([config['input'].lower().endswith(video_ext) for video_ext in SUPPORTED_VIDEO_FORMATS]):  # only support mp4 atm
+    elif any([config['input_name'].lower().endswith(video_ext) for video_ext in SUPPORTED_VIDEO_FORMATS]):  # only support mp4 atm
         deep_dream_video(config)
 
     else:  # Create a static DeepDream image
