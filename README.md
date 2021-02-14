@@ -1,8 +1,7 @@
 ## Deep Dream :computer: + :ocean::zzz: = :heart:
-This repo contains PyTorch implementation of the Deep Dream algorithm (:link: blog by [Mordvintstev et al.](https://ai.googleblog.com/2015/06/inceptionism-going-deeper-into-neural.html)).
+This repo contains a PyTorch implementation of the Deep Dream algorithm (:link: blog by [Mordvintstev et al.](https://ai.googleblog.com/2015/06/inceptionism-going-deeper-into-neural.html)).
 
-**Important note: I just added Jupyter notebook and a full command line support! 
-The project will go through another round of refactoring tomorrow (February, 14th, 21).**
+It's got a full support for the **command line** usage and a **Jupyter Notebook**!
 
 And it will give you the power to create these weird, psychedelic-looking images:
 
@@ -13,8 +12,22 @@ And it will give you the power to create these weird, psychedelic-looking images
 
 Not bad, huh?
 
-### What is Deep Dream algorithm?
-In a nutshell the algorithm maximizes activations of chosen network layers (1 or multiple) by doing **gradient ascent**.
+I strongly suggest you start with the [Jupyter notebook](https://github.com/gordicaleksa/pytorch-deepdream/blob/master/The%20Annotated%20DeepDream.ipynb) I've created!
+
+*Note: it's pretty large, ~10 MBs, so it may take a couple of attempts to load it in the browser here on GitHub.*
+
+## Table of Contents
+* [What is DeepDream?](#what-is-deepdream-algorithm)
+* [Image visualizations and experiments](#static-image-examples)
+* [Ouroboros video examples](#ouroboros-video-examples)
+* [DeepDream video examples](#deepdream-video-examples)
+* [Setup](#setup)
+* [Usage](#usage)
+* [Hardware requirements](#hardware-requirements)
+* [Learning material](#learning-material)
+
+### What is DeepDream algorithm?
+In a nutshell the algorithm maximizes the activations of chosen network layers by doing a **gradient ascent**.
 
 So from an input image like the one on the left after "dreaming" we get the image on the right:
 <p align="center">
@@ -32,9 +45,9 @@ This repo is an attempt of making the **cleanest** DeepDream repo that I'm aware
 
 ## Static Image Examples
 
-Here are some examples that you can create using this code (**deep_dream_static_image** function).
+Here are some examples that you can create using this code!
 
-### Lower layers = lower level features
+### Optimizing shallower layers = lower level features
 
 By using shallower layers of neural networks you'll get lower level patterns (edges, circles, colors, etc.) as the output:
 
@@ -46,7 +59,7 @@ By using shallower layers of neural networks you'll get lower level patterns (ed
 
 Here the first 2 images came from ResNet50 and the last one came from GoogLeNet (both pretrained on ImageNet).
 
-### Higher Layers = High level features
+### Optimizing deeper Layers = High level features
 
 By using deeper network layers you'll get higher level patterns (eyes, snouts, animal heads):
 
@@ -92,9 +105,11 @@ Playing with pyramid ratio has a similar/related effect - the basic idea is that
 <img src="data/examples/pyramid_ratio/figures_width_600_model_VGG16_EXPERIMENTAL_IMAGENET_relu4_2_pyrsize_5_pyrratio_1.8_iter_10_lr_0.09_shift_38_resized300.jpg" width="270"/>
 </p>
 
-*Note:* you can see the exact params used in the image filename itself located in `data/examples/pyramid_ratio/`.
+**Note: you can see the exact params used to create these images encoded into the filename!**
 
-## Ouroboros Examples
+Make sure to check out the [Jupyter notebook!](https://github.com/gordicaleksa/pytorch-deepdream/blob/master/The%20Annotated%20DeepDream.ipynb)
+
+## Ouroboros Video Examples
 
 Here are some further examples that you can create using this code (**deep_dream_video_ouroboros** function).
 
@@ -120,7 +135,7 @@ Finally if we do a simple translation (5 px per frame top left to bottom right d
 
 Hopefully these did not break your brain - it feels like web 1.0 early 2000s. Bear with me.
 
-## DeepDream video examples
+## DeepDream Video Examples
 
 Instead of feeding the output back to input we just apply the algorithm per frame and apply some linear blending:
 
@@ -149,72 +164,85 @@ I also recommend using Miniconda installer as a way to get conda on your system.
 Follow through points 1 and 2 of [this setup](https://github.com/Petlja/PSIML/blob/master/docs/MachineSetup.md)
 and use the most up-to-date versions of Miniconda and CUDA/cuDNN for your system.
 
-## Basic Usage
+## Usage
 
-**Note 1:** Whatever image or video you want to use you can simply **place it inside the `data/input/` directory**. <br/>
-You can then just reference your files (images/videos) by their name instead of using absolute/relative paths.
+#### Option 1: Jupyter Notebook
 
-**Note 2:** Command line is fully supported.
+Just run `jupyter notebook` from you Anaconda console and it will open up a session in your default browser. <br/>
+Open `The Annotated DeepDream.ipynb` and you're ready to play!
 
 ---
 
+**Note:** if you get `DLL load failed while importing win32api: The specified module could not be found` <br/>
+Just do `pip uninstall pywin32` and then either `pip install pywin32` or `conda install pywin32` [should fix it](https://github.com/jupyter/notebook/issues/4980)!
+
+#### Option 2: Use your IDE of choice
+
+You just need to link the Python environment you created in the [setup](#setup) section.
+
+#### Option 3: Command line
+
+Navigate to/activate your env if you're using Anaconda (and I hope you do) and you can use the commands I've linked below.
+
+---
+
+Tip:
+ * **Place your images/videos inside the `data/input/` directory and you can then just reference
+  your files (images/videos) by their name instead of using absolute/relative paths.**
+
+#### DeepDream images
+
 To create some **static Deep Dream images** run the following command:
 
-`python deepdream.py --input <img_name>`
+`python deepdream.py --input <img_name> --img_width 600`
 
-This will use the default settings but you'll immediately get a meaningful result saved to:<br/>
-`data/out-images/VGG16_EXPERIMENTAL_IMAGENET/`<br/>
-The directory will change depending on the model and pretrained weights you use.
+This will use the default settings but you'll immediately get a meaningful result saved to:
 
------
-To get the out-of-the-box **Ouroboros** video do the following:
+`data/out-images/VGG16_EXPERIMENTAL_IMAGENET/`
 
-`python deepdream.py --input <img_name> --create_ouroboros`
+*Note: the output directory will change depending on the model and pretrained weights you use.*
+
+#### Ouroboros videos
+
+To get the out-of-the-box **Ouroboros** 30-frame video do the following:
+
+`python deepdream.py --input <img_name> --create_ouroboros --ouroboros_length 30`
 
 It will dump the intermediate frames to `data/out-videos/VGG16_EXPERIMENTAL_IMAGENET/` and it will save the final video to `data/out-videos`.
 
------
-To create a **Deep Dream video** run this:
+#### DeepDream videos
+
+To create a **Deep Dream video** run this command:
 
 `python deepdream.py --input <mp4 video name>`
 
 It will dump the intermediate frames to `data/out-videos/tmp_out` and it will save the final video to `data/out-videos`.
 
-## Experimenting
-
-You'll probably wish to have more control of the output you create - and the code is hopefully self-explanatory to help you do that.
-I'll just summarize the most important params here:
-
-`--model_name` - choose between VGG 16 (best for high-level features), ResNet 50 (nice for mid-level features), GoogLeNet (low-to-mid features are nice).
-AlexNet didn't give me nice results so I haven't used any of it's outputs in this README - if you manage to get it working please create an issue.
-
-`--layers_to_use` - you can use single or multiple layers here just put them in a list like ['relu3_3', 'relu4_3']. <br/>
-Depending on the model you choose you'll have to set different layer names:<br/>
-
-For VGG16_EXPERIMENTAL you have these on your disposal: `relu3_3`, `relu4_1`, `relu4_2`, etc.<br/>
-(checkout `models/definitions/vggs.py` for more details)
-
-For RESNET50 `layer1`, `layer2`, `layer3` and `layer4` but again go to `models/definitions/resnets.py` and expose the layers
-that you find particularly beautiful. There are many layers you can experiment with especially with ResNet50.
-
-`--pyramid_size` - already briefly touched on this one - the bigger you go here the the less recognizable the original image will become.
-
-`--pyramid_ratio` - some combinations of this one and `pyramid_size` will make too small of an output and crash the program.
-
-You're ready to go! Here is some more candy for you:
+Well, enjoy playing with this project! Here are some additional, beautiful, results:
 
 <p align="center">
 <img src="data/examples/footer/figures_width_600_model_RESNET50_PLACES_365_layer3_pyrsize_11_pyrratio_1.3_iter_10_lr_0.09_shift_32_resized400.jpg" width="400"/>
 <img src="data/examples/footer/figures_width_600_model_RESNET50_PLACES_365_layer4_pyrsize_11_pyrratio_1.3_iter_10_lr_0.09_shift_32_resized400.jpg" width="400"/>
 </p>
 
------
+## Hardware requirements
 
-*Note: All of the examples I used in this README have parameters used to create them encoded directly into the file name,<br/>
-so you can reconstruct them - although there is some randomness in the process so identical reconstructions are not guaranteed.*
+A GPU with 2+ GBs will be more than enough.
 
-There is a small ambiguity on which exact sublayer was used (e.g. ResNet50's layer4 but which exact sublayer?)<br/>
-I usually encoded the sublayer through the `shift_` infix you can just try out a couple of them and find the exact one.
+You'll be able to create DeepDream images, Ouroboros and DeepDream videos.
+
+If you don't have a GPU, the code can run on the CPU but somewhat slower (especially for videos).
+
+## Learning material
+
+If you're having difficulties understanding DeepDream I did an overview of the algorithm [in this video](https://www.youtube.com/watch?v=6rVrh5gnpwk):
+
+<p align="left">
+<a href="https://www.youtube.com/watch?v=6rVrh5gnpwk" target="_blank"><img src="https://img.youtube.com/vi/6rVrh5gnpwk/0.jpg" 
+alt="The GAT paper explained" width="480" height="360" border="10" /></a>
+</p>
+
+And also the [Jupyter Notebook](https://github.com/gordicaleksa/pytorch-deepdream/blob/master/The%20Annotated%20DeepDream.ipynb) I created is the best place to start!
 
 ## Acknowledgements
 

@@ -225,6 +225,7 @@ if __name__ == "__main__":
         deep_dream_video(config)
 
     else:  # Create a static DeepDream image
+        print('Dreaming started!')
         img = deep_dream_static_image(config, img=None)  # img=None -> will be loaded inside of deep_dream_static_image
         dump_path = utils.save_and_maybe_display_image(config, img)
         print(f'Saved DeepDream static image to: {os.path.relpath(dump_path)}\n')
