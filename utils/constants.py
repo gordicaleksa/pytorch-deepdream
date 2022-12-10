@@ -10,7 +10,7 @@ IMAGENET_MEAN_1 = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 IMAGENET_STD_1 = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # checking whether you have a GPU
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.has_mps else "cpu")  # checking whether you have a GPU
 
 
 LOWER_IMAGE_BOUND = torch.tensor((-IMAGENET_MEAN_1 / IMAGENET_STD_1).reshape(1, -1, 1, 1)).to(DEVICE)
