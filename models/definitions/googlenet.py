@@ -13,7 +13,7 @@ class GoogLeNet(torch.nn.Module):
     def __init__(self, pretrained_weights, requires_grad=False, show_progress=False):
         super().__init__()
         if pretrained_weights == SupportedPretrainedWeights.IMAGENET.name:
-            googlenet = models.googlenet(pretrained=True, progress=show_progress).eval()
+            googlenet = models.googlenet(weights=models.GoogLeNet_Weights.DEFAULT, progress=show_progress).eval()
         else:
             raise Exception(f'Pretrained weights {pretrained_weights} not yet supported for {self.__class__.__name__} model.')
 

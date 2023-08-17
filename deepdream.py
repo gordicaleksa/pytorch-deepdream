@@ -22,9 +22,12 @@ import utils.video_utils as video_utils
 
 
 # loss.backward(layer) <- original implementation did it like this it's equivalent to MSE(reduction='sum')/2
-def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
+def gradient_ascent(config, model, input_tensor, input_text, layer_ids_to_use, iteration):
     # Step 0: Feed forward pass
-    out = model(input_tensor)
+    if "CLIP" in model.__class__.__name__:
+        out = model((input_tensor, input_text))
+    else:
+        out = model(input_tensor)
 
     # Step 1: Grab activations/feature maps of interest
     activations = [out[layer_id_to_use] for layer_id_to_use in layer_ids_to_use]
@@ -62,7 +65,7 @@ def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
 
     # Step 5: Clear gradients and clamp the data (otherwise values would explode to +- "infinity")
     input_tensor.grad.data.zero_()
-    input_tensor.data = torch.max(torch.min(input_tensor, UPPER_IMAGE_BOUND), LOWER_IMAGE_BOUND)
+    input_tensor.data = torch.max(torch.min(input_tensor, ConstantsContext.UPPER_IMAGE_BOUND), ConstantsContext.LOWER_IMAGE_BOUND)
 
 
 def deep_dream_static_image(config, img):
@@ -77,7 +80,7 @@ def deep_dream_static_image(config, img):
     if img is None:  # load either the provided image or start from a pure noise image
         img_path = utils.parse_input_file(config['input'])
         # load a numpy, [0, 1] range, channel-last, RGB image
-        img = utils.load_image(img_path, target_shape=config['img_width'])
+        img = utils.load_image(img_path, target_shape=config['img_dimensions'])
         if config['use_noise']:
             shape = img.shape
             img = np.random.uniform(low=0.0, high=1.0, size=shape).astype(np.float32)
@@ -85,22 +88,32 @@ def deep_dream_static_image(config, img):
     img = utils.pre_process_numpy_img(img)
     base_shape = img.shape[:-1]  # save initial height and width
 
+    input_text = config["text_prompt"]
+
     # Note: simply rescaling the whole result (and not only details, see original implementation) gave me better results
     # Going from smaller to bigger resolution (from pyramid top to bottom)
     for pyramid_level in range(config['pyramid_size']):
         new_shape = utils.get_new_shape(config, base_shape, pyramid_level)
         img = cv.resize(img, (new_shape[1], new_shape[0]))
+        # Generate padded image in case of FixedImageResolutions models
+        if model.__class__.__name__ in FixedImageResolutionClasses:
+            img = utils.pad_image_to_shape(img, base_shape)
+
         input_tensor = utils.pytorch_input_adapter(img, DEVICE)
 
         for iteration in range(config['num_gradient_ascent_iterations']):
             h_shift, w_shift = np.random.randint(-config['spatial_shift_size'], config['spatial_shift_size'] + 1, 2)
             input_tensor = utils.random_circular_spatial_shift(input_tensor, h_shift, w_shift)
 
-            gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration)
+            gradient_ascent(config, model, input_tensor, input_text, layer_ids_to_use, iteration)
 
             input_tensor = utils.random_circular_spatial_shift(input_tensor, h_shift, w_shift, should_undo=True)
 
         img = utils.pytorch_output_adapter(input_tensor)
+        
+        # Unpad padded image
+        if model.__class__.__name__ in FixedImageResolutionClasses:
+            img = utils.extract_original_from_padded(img, new_shape)
 
     return utils.post_process_numpy_img(img)
 
@@ -121,7 +134,7 @@ def deep_dream_video_ouroboros(config):
     img_path = utils.parse_input_file(config['input'])
     # load numpy, [0, 1] range, channel-last, RGB image
     # use_noise and consequently None value, will cause it to initialize the frame with uniform, [0, 1] range, noise
-    frame = None if config['use_noise'] else utils.load_image(img_path, target_shape=config['img_width'])
+    frame = None if config['use_noise'] else utils.load_image(img_path, target_shape=config['img_dimensions'])
 
     for frame_id in range(config['ouroboros_length']):
         print(f'Ouroboros iteration {frame_id+1}.')
@@ -155,7 +168,7 @@ def deep_dream_video(config):
         # Step 1: load the video frame
         print(f'Processing frame {frame_id}')
         frame_path = os.path.join(tmp_input_dir, frame_name)
-        frame = utils.load_image(frame_path, target_shape=config['img_width'])
+        frame = utils.load_image(frame_path, target_shape=config['img_dimensions'])
 
         # Step 2: potentially blend it with the last frame
         if config['blend'] is not None and last_img is not None:
@@ -183,15 +196,16 @@ if __name__ == "__main__":
 
     # Common params
     parser.add_argument("--input", type=str, help="Input IMAGE or VIDEO name that will be used for dreaming", default='figures.jpg')
-    parser.add_argument("--img_width", type=int, help="Resize input image to this width", default=600)
+    parser.add_argument("--img_dimensions", nargs='+', type=int, help="Resize input image to this width and optionally height, e.g. 300 or 300 400", default=None)
     parser.add_argument("--layers_to_use", type=str, nargs='+', help="Layer whose activations we should maximize while dreaming", default=['relu4_3'])
+    parser.add_argument("--text_prompt", type=str, help="Text prompt whose CLIP similarity we should maximize while dreaming", default="Triangles")
     parser.add_argument("--model_name", choices=[m.name for m in SupportedModels],
                         help="Neural network (model) to use for dreaming", default=SupportedModels.VGG16_EXPERIMENTAL.name)
     parser.add_argument("--pretrained_weights", choices=[pw.name for pw in SupportedPretrainedWeights],
                         help="Pretrained weights to use for the above model", default=SupportedPretrainedWeights.IMAGENET.name)
 
     # Main params for experimentation (especially pyramid_size and pyramid_ratio)
-    parser.add_argument("--pyramid_size", type=int, help="Number of images in an image pyramid", default=4)
+    parser.add_argument("--pyramid_size", type=int, help="Number of images in an image pyramid", default=3)
     parser.add_argument("--pyramid_ratio", type=float, help="Ratio of image sizes in the pyramid", default=1.8)
     parser.add_argument("--num_gradient_ascent_iterations", type=int, help="Number of gradient ascent iterations", default=10)
     parser.add_argument("--lr", type=float, help="Learning rate i.e. step size in gradient ascent", default=0.09)
@@ -221,7 +235,27 @@ if __name__ == "__main__":
     config['dump_dir'] = OUT_VIDEOS_PATH if config['create_ouroboros'] else OUT_IMAGES_PATH
     config['dump_dir'] = os.path.join(config['dump_dir'], f'{config["model_name"]}_{config["pretrained_weights"]}')
     config['input_name'] = os.path.basename(config['input'])
+    if config["img_dimensions"]:
+        if (len(config["img_dimensions"]) == 1):
+            config["img_dimensions"] = config["img_dimensions"][0]
+        elif (len(config["img_dimensions"]) == 2):
+            config["img_dimensions"] = tuple(config["img_dimensions"])
 
+    # Set constants to clip constants in case of clip pretraining
+    if config["pretrained_weights"].startswith("CLIP"):
+        ConstantsContext.use_clip()
+    else:
+        ConstantsContext.use_imagenet()
+
+    # Correcting img_dimensions and pyramid_size for models with a fixed input resolution
+    if config["model_name"] in FixedImageResolutions.keys():
+        if config["img_dimensions"] is None:
+            print(f"{config['model_name']} has a fixed input resolution of {FixedImageResolutions[config['model_name']]}. The image will be reshaped to the correct input resolution.")
+            config["img_dimensions"] = FixedImageResolutions[config["model_name"]]
+        if config["img_dimensions"] != FixedImageResolutions[config["model_name"]]:
+            print(f"{config['model_name']} has a fixed input resolution of {FixedImageResolutions[config['model_name']]}. It cannot take input of size {config['img_dimensions']}. The image will be reshaped to the correct input resolution.")
+            config["img_dimensions"] = FixedImageResolutions[config["model_name"]]
+            
     # Create Ouroboros video (feeding neural network's output to it's input)
     if config['create_ouroboros']:
         deep_dream_video_ouroboros(config)
