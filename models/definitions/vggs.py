@@ -67,7 +67,7 @@ class Vgg16Experimental(torch.nn.Module):
         super().__init__()
 
         if pretrained_weights == SupportedPretrainedWeights.IMAGENET.name:
-            vgg16 = models.vgg16(pretrained=True, progress=show_progress).eval()
+            vgg16 = models.vgg16(weights=models.VGG16_Weights.DEFAULT, progress=show_progress).eval()
         else:
             raise Exception(f'Pretrained weights {pretrained_weights} not yet supported for {self.__class__.__name__} model.')
 

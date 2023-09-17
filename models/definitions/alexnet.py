@@ -1,11 +1,9 @@
 import os
 from collections import namedtuple
 
-
 import torch
 from torchvision import models
 from torch.hub import download_url_to_file
-
 
 from utils.constants import *
 
@@ -15,9 +13,9 @@ class AlexNet(torch.nn.Module):
     def __init__(self, pretrained_weights, requires_grad=False, show_progress=False):
         super().__init__()
         if pretrained_weights == SupportedPretrainedWeights.IMAGENET.name:
-            alexnet = models.alexnet(pretrained=True, progress=show_progress).eval()
-        else:
-            alexnet = models.alexnet(pretrained=False, progress=show_progress).eval()
+            alexnet = models.alexnet(weights=models.AlexNet_Weights.DEFAULT, progress=show_progress).eval()
+        elif pretrained_weights == SupportedPretrainedWeights.PLACES_365.name:
+            alexnet = models.alexnet(weights=None, progress=show_progress).eval()
 
             binary_name = 'alexnet_places365.pth.tar'
             alexnet_places365_binary_path = os.path.join(BINARIES_PATH, binary_name)
@@ -38,6 +36,8 @@ class AlexNet(torch.nn.Module):
 
             alexnet.classifier[-1] = torch.nn.Linear(alexnet.classifier[-1].in_features, 365)
             alexnet.load_state_dict(new_state_dict, strict=True)
+        else:
+            raise Exception(f'Pretrained weights {pretrained_weights} not yet supported for {self.__class__.__name__} model.')
 
         alexnet_pretrained_features = alexnet.features
         self.layer_names = ['relu1', 'relu2', 'relu3', 'relu4', 'relu5']
